@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # WSL/Linux/MacOS Initialization Script
 # ------------------------------------------------------------------------------
-# Usage: chmod +x init.sh && ./init.sh
+# Usage: sudo chmod +x init.sh && ./init.sh
 # ------------------------------------------------------------------------------
 
 set -o pipefail
@@ -14,17 +14,20 @@ APT_PACKAGES=(
 	"git"
 	"curl"
 	"wget"
+	"tmux"
 	"unzip"
 	"build-essential"
 	"zsh"
-	"tmux"
-	"neovim"
 	"php"
 	"composer"
 	"ruby"
 	"postgresql-client"
 	"dnsutils"
-  "neofetch"
+	"neofetch"
+  "htop"
+  "speedtest-cli"
+  "cmatrix"
+  "figlet"
 )
 
 # Dev tools for Homebrew (MacOS)
@@ -35,7 +38,6 @@ HOMEBREW_PACKAGES=(
 	"unzip"
 	"zsh"
 	"tmux"
-	"neovim"
 	"php"
 	"composer"
 	"ruby"
@@ -43,6 +45,10 @@ HOMEBREW_PACKAGES=(
 	"bind"
 	"ngrok"
 	"act"
+	"htop"
+  "speedtest-cli"
+  "cmatrix"
+  "figlet"
 )
 
 # GUI Apps (MacOS)
@@ -59,6 +65,11 @@ HOMEBREW_CASK_PACKAGES=(
 	"mongodb-compass"
 	"vlc"
 	"hyper"
+)
+
+# Cargo packages (Rust)
+CARGO_PACKAGES=(
+	"bob-nvim"
 )
 
 # Oh My Zsh Plugins
@@ -78,19 +89,19 @@ GRAY='\033[0;90m'
 NO_COLOR='\033[0m'
 
 log_info() {
-	echo -e "${CYAN}[$(date +%H:%M:%S)] $1${NO_COLOR}"
+	echo -e "${CYAN}[$(date +%H:%M:%S)] [INFO] $1${NO_COLOR}"
 }
 
 log_success() {
-	echo -e "${GREEN}[$(date +%H:%M:%S)] ✓ $1${NO_COLOR}"
+	echo -e "${GREEN}[$(date +%H:%M:%S)] [SUCCESS] $1${NO_COLOR}"
 }
 
 log_warning() {
-	echo -e "${YELLOW}[$(date +%H:%M:%S)] ! $1${NO_COLOR}"
+	echo -e "${YELLOW}[$(date +%H:%M:%S)] [WARN] $1${NO_COLOR}"
 }
 
 log_error() {
-	echo -e "${RED}[$(date +%H:%M:%S)] ✗ $1${NO_COLOR}"
+	echo -e "${RED}[$(date +%H:%M:%S)] [ERROR] $1${NO_COLOR}"
 }
 
 # Detect OS --------------------------------------------------------------------
@@ -177,8 +188,9 @@ check_command() {
 
 install_apt_package() {
 	local package=$1
-	local max_retries=2
+	local max_retries=3
 	local attempt=0
+
 	# Check if already installed
 	if dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
 		log_warning "$package already installed, skipping"
@@ -188,7 +200,7 @@ install_apt_package() {
 
 	while [[ $attempt -lt $max_retries ]]; do
 		((attempt++))
-		log_info "Installing $package (attempt $attempt/$max_retries)..."
+		log_info "Installing $package..."
 
 		if sudo apt-get install -y "$package" &>/dev/null; then
 			log_success "$package installed"
@@ -196,7 +208,7 @@ install_apt_package() {
 			return 0
 		else
 			if [[ $attempt -lt $max_retries ]]; then
-				log_warning "Retrying $package..."
+				log_warning "Failed to install $package, retrying..."
 				sleep 2
 			fi
 		fi
@@ -221,7 +233,7 @@ install_brew_package() {
 
 	while [[ $attempt -lt $max_retries ]]; do
 		((attempt++))
-		log_info "Installing $package (attempt $attempt/$max_retries)..."
+		log_info "Installing $package..."
 
 		if brew install "$package" &>/dev/null; then
 			log_success "$package installed"
@@ -229,7 +241,7 @@ install_brew_package() {
 			return 0
 		else
 			if [[ $attempt -lt $max_retries ]]; then
-				log_warning "Retrying $package..."
+				log_warning "Failed to install $package, retrying..."
 				sleep 2
 			fi
 		fi
@@ -254,7 +266,7 @@ install_brew_cask() {
 
 	while [[ $attempt -lt $max_retries ]]; do
 		((attempt++))
-		log_info "Installing $package (attempt $attempt/$max_retries)..."
+		log_info "Installing $package..."
 
 		if brew install --cask "$package" &>/dev/null; then
 			log_success "$package installed"
@@ -262,7 +274,7 @@ install_brew_cask() {
 			return 0
 		else
 			if [[ $attempt -lt $max_retries ]]; then
-				log_warning "Retrying $package..."
+				log_warning "Failed to install $package, retrying..."
 				sleep 2
 			fi
 		fi
@@ -273,12 +285,129 @@ install_brew_cask() {
 	return 1
 }
 
+check_rust() {
+	command -v rustc &>/dev/null && command -v cargo &>/dev/null
+}
+
+install_rust() {
+	log_info "Installing Rust and Cargo..."
+
+	if check_rust; then
+		log_warning "Rust and Cargo already installed, skipping"
+		SKIPPED+=("rust")
+		return 0
+	fi
+
+	# Install rustup (which installs Rust and Cargo)
+	if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &>/dev/null; then
+		# Source cargo env for current session
+		source "$HOME/.cargo/env"
+		log_success "Rust and Cargo installed"
+		INSTALLED+=("rust" "cargo")
+		return 0
+	else
+		log_error "Rust installation failed"
+		FAILED+=("rust")
+		return 1
+	fi
+}
+
+install_cargo_package() {
+	local package=$1
+	local max_retries=3
+	local attempt=0
+
+	# Ensure cargo is available
+	[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+	if ! command -v cargo &>/dev/null; then
+		log_error "Cargo not found, cannot install $package"
+		FAILED+=("$package")
+		return 1
+	fi
+
+	# Check if already installed
+	if cargo install --list 2>/dev/null | grep -q "^$package "; then
+		log_warning "$package already installed, skipping"
+		SKIPPED+=("$package")
+		return 0
+	fi
+
+	while [[ $attempt -lt $max_retries ]]; do
+		((attempt++))
+		log_info "Installing $package via cargo..."
+
+		if cargo install "$package" &>/dev/null; then
+			log_success "$package installed"
+			INSTALLED+=("$package")
+			return 0
+		else
+			if [[ $attempt -lt $max_retries ]]; then
+				log_warning "Failed to install $package via cargo, retrying..."
+				sleep 2
+			fi
+		fi
+	done
+
+	log_error "$package failed"
+	FAILED+=("$package")
+	return 1
+}
+
+setup_cargo_packages() {
+	log_info "Installing Cargo packages..."
+
+	# Ensure cargo is available
+	[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+	for package in "${CARGO_PACKAGES[@]}"; do
+		install_cargo_package "$package"
+	done
+}
+
+setup_neovim_via_bob() {
+	log_info "Setting up Neovim via bob..."
+
+	# Ensure cargo env is loaded (bob is installed via cargo)
+	[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+	if ! command -v bob &>/dev/null; then
+		log_error "bob not found, cannot install Neovim"
+		FAILED+=("neovim")
+		return 1
+	fi
+
+	# Check if neovim is already installed via bob
+	if bob list 2>/dev/null | grep -q "Used"; then
+		log_warning "Neovim already installed via bob, skipping"
+		SKIPPED+=("neovim")
+		# Still add to PATH for this session so LazyVim can find it
+		export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
+		return 0
+	fi
+
+	log_info "Installing Neovim stable via bob..."
+	if bob install stable &>/dev/null && bob use stable &>/dev/null; then
+		log_success "Neovim stable installed via bob"
+		INSTALLED+=("neovim-stable")
+
+		# Add bob's nvim-bin to PATH for current session (so LazyVim can find nvim)
+		local bob_nvim_bin="$HOME/.local/share/bob/nvim-bin"
+		export PATH="$bob_nvim_bin:$PATH"
+		log_info "Added $bob_nvim_bin to PATH for this session"
+	else
+		log_error "Neovim installation via bob failed"
+		FAILED+=("neovim")
+		return 1
+	fi
+}
+
 setup_apt_packages() {
-	log_info "Updating apt package list..."
+	log_info "Updating apt packages..."
+
 	sudo apt-get update -y &>/dev/null
 
 	log_info "Installing dev tools via apt..."
-	echo ""
 
 	for package in "${APT_PACKAGES[@]}"; do
 		install_apt_package "$package"
@@ -308,6 +437,7 @@ setup_brew_cask_packages() {
 
 setup_ohmyzsh() {
 	log_info "Setting up Oh My Zsh..."
+  echo ""
 
 	# Check if already installed
 	if [[ -d "$HOME/.oh-my-zsh" ]]; then
@@ -316,6 +446,7 @@ setup_ohmyzsh() {
 	else
 		# Install Oh My Zsh (unattended)
 		if sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; then
+      echo ""
 			log_success "Oh My Zsh installed"
 			INSTALLED+=("oh-my-zsh")
 		else
@@ -370,6 +501,7 @@ setup_ohmyzsh() {
 
 setup_nvm() {
 	log_info "Setting up NVM (Node Version Manager)..."
+  echo -e "\n"
 
 	if [[ -d "$HOME/.nvm" ]]; then
 		log_warning "NVM already installed, skipping"
@@ -429,6 +561,7 @@ setup_nvm() {
 
 setup_pyenv() {
 	log_info "Setting up pyenv (Python Version Manager)..."
+  echo -e "\n"
 
 	if [[ -d "$HOME/.pyenv" ]]; then
 		log_warning "pyenv already installed, skipping"
@@ -534,10 +667,6 @@ show_summary() {
 	local os_type=$1
 
 	echo ""
-	echo -e "${CYAN}============================================${NO_COLOR}"
-	echo -e "${CYAN}       INSTALLATION COMPLETE${NO_COLOR}"
-	echo -e "${CYAN}============================================${NO_COLOR}"
-	echo ""
 
 	# Installed
 	echo -e "${GREEN}Installed (${#INSTALLED[@]}):${NO_COLOR}"
@@ -578,32 +707,52 @@ show_summary() {
 	fi
 
 	echo ""
-	echo -e "${CYAN}============================================${NO_COLOR}"
 }
 
 # Main Entry Point --------------------------------------------------------------
 
 main() {
 	echo ""
-	echo -e "${CYAN}============================================${NO_COLOR}"
-	echo -e "${CYAN}   Dev Environment Setup Script${NO_COLOR}"
-	echo -e "${CYAN}============================================${NO_COLOR}"
+
+  echo -e "${RED}"
+  cat << 'EOF'
+                  __                __
+   __          __/\ \__            /\ \
+  /\_\    ___ /\_\ \ ,_\       ____\ \ \___
+  \/\ \ /' _ `\/\ \ \ \/      /',__\\ \  _ `\
+   \ \ \/\ \/\ \ \ \ \ \_  __/\__, `\\ \ \ \ \
+    \ \_\ \_\ \_\ \_\ \__\/\_\/\____/ \ \_\ \_\
+     \/_/\/_/\/_/\/_/\/__/\/_/\/___/   \/_/\/_/
+EOF
+  echo -e "${NO_COLOR}"
+
 	echo ""
 
 	# Detect OS
 	local os_type
 	os_type=$(detect_os)
 	log_info "Detected OS: $os_type"
-	echo ""
 
 	case "$os_type" in
 		wsl|linux)
 			log_info "Setting up WSL/Linux environment..."
-			echo ""
 
 			# Install apt packages
 			setup_apt_packages
 			echo ""
+
+			# Setup Rust and Cargo
+			if confirm_install "Do you want to install Rust, Cargo, and Neovim (via bob)?"; then
+        echo ""
+				install_rust
+				setup_cargo_packages
+				setup_neovim_via_bob
+				echo ""
+			else
+				log_warning "Skipping Rust/Cargo/Neovim setup"
+				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
+				echo ""
+			fi
 
 			# Setup Oh My Zsh
 			setup_ohmyzsh
@@ -660,6 +809,18 @@ main() {
 			setup_brew_cask_packages
 			echo ""
 
+			# Setup Rust and Cargo
+			if confirm_install "Do you want to install Rust, Cargo, and Neovim (via bob)?"; then
+				install_rust
+				echo ""
+				setup_cargo_packages
+				setup_neovim_via_bob
+			else
+				log_warning "Skipping Rust/Cargo/Neovim setup"
+				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
+				echo ""
+			fi
+
 			# Setup Oh My Zsh
 			setup_ohmyzsh
 			echo ""
@@ -701,13 +862,31 @@ main() {
 	show_summary "$os_type"
 
 	log_success "Setup complete!"
-	echo ""
 
-	# Remind about shell change
+	# Set zsh as default shell if not already
 	if command -v zsh &>/dev/null; then
-		echo -e "${YELLOW}Note: To use zsh as your default shell, run:${NO_COLOR}"
-		echo -e "${GRAY}  chsh -s \$(which zsh)${NO_COLOR}"
-		echo ""
+		local current_shell
+		current_shell=$(getent passwd "$USER" | cut -d: -f7)
+		local zsh_path
+		zsh_path=$(which zsh)
+
+		if [[ "$current_shell" != "$zsh_path" ]]; then
+			log_info "Setting zsh as default shell (may require password)..."
+      echo -e ""
+
+			if chsh -s "$zsh_path"; then
+        echo ""
+				log_success "Default shell changed to zsh"
+				echo -e "${YELLOW}Note: Restart your terminal for the shell change to take effect${NO_COLOR}"
+				echo ""
+			else
+				log_warning "Failed to change shell. You can manually run: chsh -s $zsh_path"
+				echo ""
+			fi
+		else
+			log_info "zsh is already your default shell"
+			echo ""
+		fi
 	fi
 }
 

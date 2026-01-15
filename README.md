@@ -41,5 +41,5 @@ Automates the installation of essential dev tools and GUI applications using apt
 **Usage:**
 
 ```sh
-chmod +x scripts/init.sh && ./scripts/init.sh
+sudo chmod +x scripts/init.sh && ./scripts/init.sh
 ```
