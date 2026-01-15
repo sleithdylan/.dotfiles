@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # WSL/Linux/MacOS Initialization Script
 # ------------------------------------------------------------------------------
-# Usage: sudo ./init.sh
+# Usage: chmod +x init.sh && ./init.sh
 # ------------------------------------------------------------------------------
 
 set -o pipefail
@@ -473,6 +473,61 @@ setup_pyenv() {
 	fi
 }
 
+setup_lazyvim() {
+	log_info "Setting up LazyVim..."
+
+	local nvim_config="$HOME/.config/nvim"
+
+	# Check if neovim is installed
+	if ! command -v nvim &>/dev/null; then
+		log_error "Neovim is not installed. Please install neovim first."
+		FAILED+=("lazyvim")
+		return 1
+	fi
+
+	# Check if LazyVim is already installed (look for lazy.nvim)
+	if [[ -d "$nvim_config/lua" ]] && [[ -f "$nvim_config/lazy-lock.json" ]]; then
+		log_warning "LazyVim appears to be already installed, skipping"
+		SKIPPED+=("lazyvim")
+		return 0
+	fi
+
+	# Backup existing config if it exists
+	if [[ -d "$nvim_config" ]]; then
+		log_info "Backing up existing Neovim config..."
+		mv "$nvim_config" "${nvim_config}.bak"
+	fi
+
+	# Optional: Backup data directories
+	[[ -d "$HOME/.local/share/nvim" ]] && mv "$HOME/.local/share/nvim" "$HOME/.local/share/nvim.bak"
+	[[ -d "$HOME/.local/state/nvim" ]] && mv "$HOME/.local/state/nvim" "$HOME/.local/state/nvim.bak"
+	[[ -d "$HOME/.cache/nvim" ]] && mv "$HOME/.cache/nvim" "$HOME/.cache/nvim.bak"
+
+	# Clone LazyVim starter
+	log_info "Cloning LazyVim starter..."
+	if git clone https://github.com/LazyVim/starter "$nvim_config" &>/dev/null; then
+		# Remove .git and set up fresh repo with upstream remote
+		rm -rf "$nvim_config/.git"
+
+		# Initialize new repo with upstream for future updates
+		git -C "$nvim_config" init &>/dev/null
+		git -C "$nvim_config" remote add upstream https://github.com/LazyVim/starter.git &>/dev/null
+		git -C "$nvim_config" add . &>/dev/null
+		git -C "$nvim_config" commit -m "Initial LazyVim setup" &>/dev/null
+
+		log_success "LazyVim installed"
+		INSTALLED+=("lazyvim")
+
+		log_info "Run 'nvim' to complete LazyVim setup and install plugins"
+		log_info "After first launch, run ':LazyHealth' to verify installation"
+		log_info "To pull LazyVim updates: cd ~/.config/nvim && git fetch upstream && git merge upstream/main"
+	else
+		log_error "LazyVim installation failed"
+		FAILED+=("lazyvim")
+		return 1
+	fi
+}
+
 # Installation Summary ---------------------------------------------------------
 
 show_summary() {
@@ -566,9 +621,18 @@ main() {
 
 			if confirm_install "Do you want to install pyenv and Python?"; then
 				setup_pyenv
+				echo ""
 			else
 				log_warning "Skipping pyenv setup"
 				SKIPPED+=("pyenv")
+				echo ""
+			fi
+
+			if confirm_install "Do you want to install LazyVim for Neovim?"; then
+				setup_lazyvim
+			else
+				log_warning "Skipping LazyVim setup"
+				SKIPPED+=("lazyvim")
 			fi
 			;;
 
@@ -612,9 +676,18 @@ main() {
 
 			if confirm_install "Do you want to install pyenv and Python?"; then
 				setup_pyenv
+				echo ""
 			else
 				log_warning "Skipping pyenv setup"
 				SKIPPED+=("pyenv")
+				echo ""
+			fi
+
+			if confirm_install "Do you want to install LazyVim for Neovim?"; then
+				setup_lazyvim
+			else
+				log_warning "Skipping LazyVim setup"
+				SKIPPED+=("lazyvim")
 			fi
 			;;
 
