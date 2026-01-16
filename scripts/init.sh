@@ -343,7 +343,7 @@ install_cargo_package() {
 			return 0
 		else
 			if [[ $attempt -lt $max_retries ]]; then
-				log_warning "Failed to install $package via cargo, retrying..."
+				log_warning "Failed to install $package, retrying..."
 				sleep 2
 			fi
 		fi
@@ -386,7 +386,7 @@ setup_neovim_via_bob() {
 		return 0
 	fi
 
-	log_info "Installing Neovim stable via bob..."
+	log_info "Installing Neovim via bob..."
 	if bob install stable &>/dev/null && bob use stable &>/dev/null; then
 		log_success "Neovim stable installed via bob"
 		INSTALLED+=("neovim-stable")
@@ -437,7 +437,6 @@ setup_brew_cask_packages() {
 
 setup_ohmyzsh() {
 	log_info "Setting up Oh My Zsh..."
-  echo ""
 
 	# Check if already installed
 	if [[ -d "$HOME/.oh-my-zsh" ]]; then
@@ -499,9 +498,41 @@ setup_ohmyzsh() {
 	fi
 }
 
+configure_zshrc_paths() {
+	log_info "Configuring PATH exports in .zshrc..."
+
+	# Ensure .zshrc exists
+	if [[ ! -f "$HOME/.zshrc" ]]; then
+		log_warning ".zshrc not found, skipping PATH configuration"
+		return 1
+	fi
+
+	# Add bob's nvim-bin to .zshrc (if bob/neovim is installed)
+	if [[ -d "$HOME/.local/share/bob/nvim-bin" ]]; then
+		if ! grep -q 'bob/nvim-bin' "$HOME/.zshrc" 2>/dev/null; then
+			echo '' >> "$HOME/.zshrc"
+			echo '# Bob (Neovim version manager)' >> "$HOME/.zshrc"
+			echo 'export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"' >> "$HOME/.zshrc"
+			log_success "Added bob nvim-bin to .zshrc"
+		else
+			log_warning "bob nvim-bin already in .zshrc, skipping"
+		fi
+	fi
+
+	# Add cargo to .zshrc (if installed)
+	if [[ -f "$HOME/.cargo/env" ]]; then
+		if ! grep -q '\.cargo/env' "$HOME/.zshrc" 2>/dev/null; then
+			echo '' >> "$HOME/.zshrc"
+			echo '# Cargo (Rust package manager)' >> "$HOME/.zshrc"
+			echo '. "$HOME/.cargo/env"' >> "$HOME/.zshrc"
+			log_success "Added cargo env to .zshrc"
+		fi
+	fi
+}
+
 setup_nvm() {
 	log_info "Setting up NVM (Node Version Manager)..."
-  echo -e "\n"
+  echo ""
 
 	if [[ -d "$HOME/.nvm" ]]; then
 		log_warning "NVM already installed, skipping"
@@ -528,7 +559,7 @@ setup_nvm() {
 
 	# Install Node.js LTS
 	if command -v nvm &>/dev/null; then
-		log_info "Installing Node.js LTS via NVM..."
+		log_info "Installing Node.js LTS via nvm..."
 		if nvm install --lts &>/dev/null; then
 			nvm use --lts &>/dev/null
 			nvm alias default 'lts/*' &>/dev/null
@@ -561,7 +592,7 @@ setup_nvm() {
 
 setup_pyenv() {
 	log_info "Setting up pyenv (Python Version Manager)..."
-  echo -e "\n"
+  echo ""
 
 	if [[ -d "$HOME/.pyenv" ]]; then
 		log_warning "pyenv already installed, skipping"
@@ -687,7 +718,7 @@ show_summary() {
 	echo ""
 
 	# Failed
-	echo -e "${RED}Failed (${#FAILED[@]}) - after retry:${NO_COLOR}"
+	echo -e "${RED}Failed (${#FAILED[@]})${NO_COLOR}"
 	if [[ ${#FAILED[@]} -gt 0 ]]; then
 		echo -e "${GRAY}  ${FAILED[*]}${NO_COLOR}"
 		echo ""
@@ -747,15 +778,17 @@ EOF
 				install_rust
 				setup_cargo_packages
 				setup_neovim_via_bob
-				echo ""
 			else
 				log_warning "Skipping Rust/Cargo/Neovim setup"
 				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
-				echo ""
 			fi
 
 			# Setup Oh My Zsh
 			setup_ohmyzsh
+			echo ""
+
+			# Configure PATH exports in .zshrc (after Oh My Zsh so it doesn't get overwritten)
+			configure_zshrc_paths
 			echo ""
 
 			# Setup version managers (optional)
@@ -818,11 +851,14 @@ EOF
 			else
 				log_warning "Skipping Rust/Cargo/Neovim setup"
 				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
-				echo ""
 			fi
 
 			# Setup Oh My Zsh
 			setup_ohmyzsh
+			echo ""
+
+			# Configure PATH exports in .zshrc (after Oh My Zsh so it doesn't get overwritten)
+			configure_zshrc_paths
 			echo ""
 
 			# Setup version managers (optional)
