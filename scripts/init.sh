@@ -9,7 +9,7 @@
 set -o pipefail
 
 # Packages ---------------------------------------------------------------------
-# Dev tools for apt (Ubuntu/Debian)
+# Dev tools for apt (Ubuntu/Debian https://packages.ubuntu.com/)
 APT_PACKAGES=(
 	"git"
 	"curl"
@@ -27,10 +27,14 @@ APT_PACKAGES=(
   "htop"
   "speedtest-cli"
   "cmatrix"
-  "figlet"
+  "fzf"
+  "ripgrep"
+  "bat"
+  "fd-find"
+  "httpie"
 )
 
-# Dev tools for Homebrew (MacOS)
+# Dev tools for Homebrew (MacOS https://formulae.brew.sh/formula/)
 HOMEBREW_PACKAGES=(
 	"git"
 	"curl"
@@ -48,10 +52,15 @@ HOMEBREW_PACKAGES=(
 	"htop"
   "speedtest-cli"
   "cmatrix"
-  "figlet"
+  "fzf"
+  "ripgrep"
+  "bat"
+  "fd"
+  "httpie"
+  "tlrc"
 )
 
-# GUI Apps (MacOS)
+# GUI Apps (MacOS https://formulae.brew.sh/cask/)
 HOMEBREW_CASK_PACKAGES=(
 	"firefox"
 	"slack"
@@ -67,9 +76,10 @@ HOMEBREW_CASK_PACKAGES=(
 	"hyper"
 )
 
-# Cargo packages (Rust)
+# Cargo packages (Rust https://crates.io/)
 CARGO_PACKAGES=(
 	"bob-nvim"
+	"tlrc"
 )
 
 # Oh My Zsh Plugins
@@ -150,7 +160,9 @@ confirm_install() {
 				return 1
 				;;
 			*)
+        echo ""
 				echo "Please answer y/yes or n/no."
+        echo ""
 				;;
 		esac
 	done
@@ -380,6 +392,7 @@ setup_neovim_via_bob() {
 	# Check if neovim is already installed via bob
 	if bob list 2>/dev/null | grep -q "Used"; then
 		log_warning "Neovim already installed via bob, skipping"
+    echo ""
 		SKIPPED+=("neovim")
 		# Still add to PATH for this session so LazyVim can find it
 		export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
@@ -395,9 +408,11 @@ setup_neovim_via_bob() {
 		local bob_nvim_bin="$HOME/.local/share/bob/nvim-bin"
 		export PATH="$bob_nvim_bin:$PATH"
 		log_info "Added $bob_nvim_bin to PATH for this session"
+    echo ""
 	else
 		log_error "Neovim installation via bob failed"
 		FAILED+=("neovim")
+    echo ""
 		return 1
 	fi
 }
@@ -532,7 +547,6 @@ configure_zshrc_paths() {
 
 setup_nvm() {
 	log_info "Setting up NVM (Node Version Manager)..."
-  echo ""
 
 	if [[ -d "$HOME/.nvm" ]]; then
 		log_warning "NVM already installed, skipping"
@@ -592,7 +606,6 @@ setup_nvm() {
 
 setup_pyenv() {
 	log_info "Setting up pyenv (Python Version Manager)..."
-  echo ""
 
 	if [[ -d "$HOME/.pyenv" ]]; then
 		log_warning "pyenv already installed, skipping"
@@ -770,6 +783,12 @@ EOF
 
 			# Install apt packages
 			setup_apt_packages
+
+			# Setup Oh My Zsh
+			setup_ohmyzsh
+
+			# Configure PATH exports in .zshrc (after Oh My Zsh so it doesn't get overwritten)
+			configure_zshrc_paths
 			echo ""
 
 			# Setup Rust and Cargo
@@ -779,40 +798,40 @@ EOF
 				setup_cargo_packages
 				setup_neovim_via_bob
 			else
+        echo ""
 				log_warning "Skipping Rust/Cargo/Neovim setup"
 				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
+        echo ""
 			fi
-
-			# Setup Oh My Zsh
-			setup_ohmyzsh
-			echo ""
-
-			# Configure PATH exports in .zshrc (after Oh My Zsh so it doesn't get overwritten)
-			configure_zshrc_paths
-			echo ""
 
 			# Setup version managers (optional)
 			if confirm_install "Do you want to install NVM, Node.js, pnpm, and Yarn?"; then
+        echo ""
 				setup_nvm
 				echo ""
 			else
+        echo ""
 				log_warning "Skipping NVM setup"
 				SKIPPED+=("nvm" "nodejs-lts" "pnpm" "yarn")
 				echo ""
 			fi
 
 			if confirm_install "Do you want to install pyenv and Python?"; then
+        echo ""
 				setup_pyenv
 				echo ""
 			else
+        echo ""
 				log_warning "Skipping pyenv setup"
 				SKIPPED+=("pyenv")
 				echo ""
 			fi
 
 			if confirm_install "Do you want to install LazyVim for Neovim?"; then
+        echo ""
 				setup_lazyvim
 			else
+        echo ""
 				log_warning "Skipping LazyVim setup"
 				SKIPPED+=("lazyvim")
 			fi
@@ -820,7 +839,6 @@ EOF
 
 		macos)
 			log_info "Setting up MacOS environment..."
-			echo ""
 
 			# Check/Install Homebrew
 			if check_homebrew; then
@@ -832,57 +850,61 @@ EOF
 					exit 1
 				fi
 			fi
-			echo ""
 
 			# Install Homebrew packages
 			setup_brew_packages
-			echo ""
 
 			# Install GUI apps
 			setup_brew_cask_packages
-			echo ""
-
-			# Setup Rust and Cargo
-			if confirm_install "Do you want to install Rust, Cargo, and Neovim (via bob)?"; then
-				install_rust
-				echo ""
-				setup_cargo_packages
-				setup_neovim_via_bob
-			else
-				log_warning "Skipping Rust/Cargo/Neovim setup"
-				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
-			fi
 
 			# Setup Oh My Zsh
 			setup_ohmyzsh
-			echo ""
 
 			# Configure PATH exports in .zshrc (after Oh My Zsh so it doesn't get overwritten)
 			configure_zshrc_paths
 			echo ""
 
+			# Setup Rust and Cargo
+			if confirm_install "Do you want to install Rust, Cargo, and Neovim (via bob)?"; then
+				echo ""
+				install_rust
+				setup_cargo_packages
+				setup_neovim_via_bob
+			else
+        echo ""
+				log_warning "Skipping Rust/Cargo/Neovim setup"
+				SKIPPED+=("rust" "cargo" "bob-nvim" "neovim")
+        echo ""
+			fi
+
 			# Setup version managers (optional)
 			if confirm_install "Do you want to install NVM, Node.js, pnpm, and Yarn?"; then
+        echo ""
 				setup_nvm
 				echo ""
 			else
+        echo ""
 				log_warning "Skipping NVM setup"
 				SKIPPED+=("nvm" "nodejs-lts" "pnpm" "yarn")
 				echo ""
 			fi
 
 			if confirm_install "Do you want to install pyenv and Python?"; then
+        echo ""
 				setup_pyenv
 				echo ""
 			else
+        echo ""
 				log_warning "Skipping pyenv setup"
 				SKIPPED+=("pyenv")
 				echo ""
 			fi
 
 			if confirm_install "Do you want to install LazyVim for Neovim?"; then
+        echo ""
 				setup_lazyvim
 			else
+        echo ""
 				log_warning "Skipping LazyVim setup"
 				SKIPPED+=("lazyvim")
 			fi
@@ -913,7 +935,7 @@ EOF
 			if chsh -s "$zsh_path"; then
         echo ""
 				log_success "Default shell changed to zsh"
-				echo -e "${YELLOW}Note: Restart your terminal for the shell change to take effect${NO_COLOR}"
+				echo -e "Note: Restart your terminal for the shell change to take effect${NO_COLOR}"
 				echo ""
 			else
 				log_warning "Failed to change shell. You can manually run: chsh -s $zsh_path"
