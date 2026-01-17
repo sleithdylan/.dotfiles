@@ -1,3 +1,7 @@
 {
-  "conventionalCommits.scopes": ["shell", "settings"]
+  "conventionalCommits.scopes": [
+    "shell",
+    "settings",
+    "config"
+  ]
 }
