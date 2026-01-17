@@ -32,6 +32,7 @@ APT_PACKAGES=(
   "bat"
   "fd-find"
   "httpie"
+  "fonts-powerline"
 )
 
 # Dev tools for Homebrew (MacOS https://formulae.brew.sh/formula/)
@@ -73,7 +74,8 @@ HOMEBREW_CASK_PACKAGES=(
 	"android-studio"
 	"mongodb-compass"
 	"vlc"
-	"hyper"
+	"wezterm"
+  "font-powerline-symbols"
 )
 
 # Cargo packages (Rust https://crates.io/)
@@ -84,7 +86,29 @@ CARGO_PACKAGES=(
 
 # Oh My Zsh Plugins
 ZSH_PLUGINS=(
-	"git"
+	# Version Control
+  "git"
+
+  # Cloud & Infrastructure
+  "docker"
+  "docker-compose"
+  "kubectl"
+  "helm"
+  "terraform"
+  "aws"
+  "gcloud"
+  "azure"
+  "ansible"
+
+  # Productivity Boosters
+  "sudo"              # Press ESC twice to add sudo to previous command
+  "extract"           # Universal archive extractor (works with .tar, .zip, .gz, etc.)
+  "z"                 # Jump to frequently used directories
+  "history"           # Enhanced history commands
+  "command-not-found" # Suggests package to install for missing commands
+  "vscode"            # VS Code aliases and shortcuts
+
+  # Community Plugins
 	"zsh-autosuggestions"
 	"zsh-syntax-highlighting"
 )
@@ -502,14 +526,32 @@ setup_ohmyzsh() {
 		SKIPPED+=("zsh-syntax-highlighting")
 	fi
 
-	# Update .zshrc to enable plugins
+	# Install powerlevel10k theme
+	local p10k_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+	if [[ ! -d "$p10k_dir" ]]; then
+		log_info "Installing powerlevel10k theme..."
+		if git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" &>/dev/null; then
+			log_success "powerlevel10k installed"
+			INSTALLED+=("powerlevel10k")
+		else
+			log_error "powerlevel10k failed"
+			FAILED+=("powerlevel10k")
+		fi
+	else
+		log_warning "powerlevel10k already installed, skipping"
+		SKIPPED+=("powerlevel10k")
+	fi
+
+	# Update .zshrc to enable plugins and theme
 	if [[ -f "$HOME/.zshrc" ]]; then
-		log_info "Configuring Oh My Zsh plugins..."
+		log_info "Configuring Oh My Zsh plugins and theme..."
 		# Backup original
 		cp "$HOME/.zshrc" "$HOME/.zshrc.backup"
 		# Update plugins line
 		sed -i.bak 's/^plugins=.*/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$HOME/.zshrc"
-		log_success "Oh My Zsh plugins configured"
+		# Update theme to powerlevel10k
+		sed -i.bak 's/^ZSH_THEME=.*/ZSH_THEME="powerlevel10k\/powerlevel10k"/' "$HOME/.zshrc"
+		log_success "Oh My Zsh plugins and theme configured"
 	fi
 }
 
@@ -920,6 +962,14 @@ EOF
 	show_summary "$os_type"
 
 	log_success "Setup complete!"
+
+	# Source .zshrc to apply changes (if running in zsh)
+	if [[ -n "$ZSH_VERSION" ]] && [[ -f "$HOME/.zshrc" ]]; then
+		log_info "Sourcing .zshrc to apply changes..."
+		source "$HOME/.zshrc"
+	else
+		log_info "Run 'source ~/.zshrc' after starting zsh to apply configuration"
+	fi
 
 	# Set zsh as default shell if not already
 	if command -v zsh &>/dev/null; then
