@@ -34,6 +34,18 @@ Personal development environment for Windows and Unix-based systems (WSL/Linux/M
 
 ## Scripts
 
+### Installation for Windows
+
+Automates the installation of essential dev tools and GUI applications using PowerShell.
+
+**Usage:**
+
+```sh
+Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1
+```
+
+> Make sure you are running PowerShell as Administrator before running the script!
+
 ### Installation for WSL/Linux/MacOS
 
 Automates the installation of essential dev tools and GUI applications using apt or Homebrew, depending on your OS.
