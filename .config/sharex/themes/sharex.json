@@ -1,0 +1,21 @@
+{
+  "Name": "Tokyo Night Storm",
+  "BackgroundColor": "36, 40, 59",
+  "LightBackgroundColor": "52, 59, 88",
+  "DarkBackgroundColor": "26, 27, 38",
+  "TextColor": "192, 202, 245",
+  "BorderColor": "65, 72, 104",
+  "CheckerColor": "36, 40, 59",
+  "CheckerColor2": "26, 27, 38",
+  "CheckerSize": 15,
+  "LinkColor": "125, 207, 255",
+  "MenuHighlightColor": "52, 59, 88",
+  "MenuHighlightBorderColor": "86, 95, 137",
+  "MenuBorderColor": "65, 72, 104",
+  "MenuCheckBackgroundColor": "52, 59, 88",
+  "MenuFont": "Segoe UI, 9.75pt",
+  "ContextMenuFont": "Segoe UI, 9.75pt",
+  "ContextMenuOpacity": 100,
+  "SeparatorLightColor": "86, 95, 137",
+  "SeparatorDarkColor": "65, 72, 104"
+}
