@@ -1,4 +1,6 @@
-.cursor
+# VSCode
+.vscode/settings.json
 
-# Snyk Security Extension - AI Rules (auto-generated)
+# Cursor
+.cursor/
 .cursor/rules/snyk_rules.mdc

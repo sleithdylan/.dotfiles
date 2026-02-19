@@ -1,0 +1,212 @@
+{
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.formatOnType": true
+  },
+  "auto-close-tag.activationOnLanguage": ["*"],
+  "breadcrumbs.enabled": true,
+  "cSpell.diagnosticLevel": "Hint",
+  "cSpell.userWords": ["distros"],
+  "claudeCode.preferredLocation": "panel",
+  "css.validate": true,
+  "cursorpyright.analysis.inlayHints.functionReturnTypes": true,
+  "cursorpyright.analysis.inlayHints.variableTypes": true,
+  "database-client.autoSync": true,
+  "debug.toolBarLocation": "docked",
+  "docker.extension.enableComposeLanguageServer": true,
+  "dotenv.enableAutocloaking": false,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.cursorBlinking": "phase",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.cursorStyle": "line",
+  "editor.cursorWidth": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.fontFamily": "'Source Code Pro', 'Fira Code', Consolas, 'Courier New', monospace",
+  "editor.fontLigatures": false,
+  "editor.fontSize": 14,
+  "editor.fontVariations": false,
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.indentation": true,
+  "editor.indentSize": "tabSize",
+  "editor.insertSpaces": false,
+  "editor.language.colorizedBracketPairs": [],
+  "editor.lineHeight": 22,
+  "editor.linkedEditing": true,
+  "editor.minimap.enabled": false,
+  "editor.minimap.size": "fit",
+  "editor.quickSuggestions": {
+    "comments": "on",
+    "strings": "on",
+    "other": "on"
+  },
+  "editor.renderLineHighlight": "all",
+  "editor.renderWhitespace": "selection",
+  "editor.rulers": [80, 100],
+  "editor.scrollBeyondLastLine": true,
+  "editor.showFoldingControls": "always",
+  "editor.snippetSuggestions": "bottom",
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.tabSize": 2,
+  "editor.tokenColorCustomizations": {
+    "[Tokyo Night Storm]": {
+      "textMateRules": [
+        {
+          "scope": [
+            "comment keyword.codetag.notation",
+            "comment.block.documentation keyword",
+            "comment.block.documentation storage.type.class"
+          ],
+          "settings": {
+            "foreground": "#bb9af7"
+          }
+        },
+        {
+          "scope": ["comment.block.documentation entity.name.type.instance"],
+          "settings": {
+            "foreground": "#73daca",
+            "fontStyle": "italic"
+          }
+        },
+        {
+          "scope": [
+            "comment.block.documentation entity.name.type punctuation.definition.bracket"
+          ],
+          "settings": {
+            "foreground": "#bb9af7"
+          }
+        },
+        {
+          "scope": ["comment.block.documentation variable"],
+          "settings": {
+            "foreground": "#e0af68",
+            "fontStyle": "italic"
+          }
+        }
+      ]
+    },
+    "textMateRules": []
+  },
+  "editor.useTabStops": false,
+  "editor.wordBasedSuggestions": "matchingDocuments",
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 100,
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  },
+  "emmet.syntaxProfiles": {
+    "javascript": "jsx"
+  },
+  "emmet.triggerExpansionOnTab": false,
+  "eslint.options": {
+    "extensions": [".html", ".js", ".jsx", ".ts", ".tsx", ".vue"]
+  },
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  "explorer.compactFolders": false,
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "explorer.confirmPasteNative": false,
+  "extensions.ignoreRecommendations": true,
+  "files.associations": {
+    "*.dbclient-js": "javascript",
+    "*.json.liquid": "json",
+    "*.yaml.liquid": "yaml",
+    "*.md.liquid": "markdown",
+    "*.js.liquid": "liquid-javascript",
+    "*.css.liquid": "liquid-css",
+    "*.scss.liquid": "liquid-scss",
+    ".env*": "dotenv"
+  },
+  "files.eol": "\n",
+  "files.exclude": {
+    "**/.git": false
+  },
+  "git-autoconfig.configList": [
+    {
+      "user.email": "sleithdylan@gmail.com",
+      "user.name": "Dylan Sleith"
+    },
+    {
+      "user.email": "imkayoh@protonmail.com",
+      "user.name": "kay0h"
+    }
+  ],
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.ignoreRebaseWarning": true,
+  "git.openRepositoryInParentFolders": "never",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "js/ts.implicitProjectConfig.experimentalDecorators": true,
+  "liveServer.settings.ChromeDebuggingAttachment": false,
+  "liveServer.settings.donotShowInfoMsg": true,
+  "markdownlint.config": {
+    "first-line-heading": false
+  },
+  "notebook.defaultFormatter": "ms-python.black-formatter",
+  "notebook.formatOnSave.enabled": true,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "none",
+  "python.languageServer": "None",
+  "security.workspace.trust.untrustedFiles": "open",
+  "snyk.advanced.autoSelectOrganization": true,
+  "snyk.advanced.cliPath": "C:\\Users\\notka\\AppData\\Local\\snyk-ls\\snyk-win.exe",
+  "snyk.securityAtInception.autoConfigureSnykMcpServer": true,
+  "snyk.securityAtInception.executionFrequency": "On Code Generation",
+  "snyk.trustedFolders": [],
+  "snyk.yesWelcomeNotification": false,
+  "sonarlint.automaticAnalysis": true,
+  "sonarlint.focusOnNewCode": false,
+  "sonarlint.pathToNodeExecutable": "C:\\nvm4w\\nodejs\\node.exe",
+  "terminal.explorerKind": "external",
+  "terminal.external.linuxExec": "wezterm",
+  "terminal.external.osxExec": "Ghostty.app",
+  "terminal.integrated.autoReplies": {},
+  "terminal.integrated.automationProfile.linux": {},
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+  "terminal.integrated.fontFamily": "'MesloLGS NF', monospace",
+  "terminal.integrated.profiles.linux": {
+    "zsh": {
+      "path": "zsh",
+      "icon": "terminal-bash"
+    }
+  },
+  "terminal.integrated.profiles.windows": {
+    "Git Bash": {
+      "source": "Git Bash"
+    },
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Ubuntu (WSL)": {
+      "path": "C:\\WINDOWS\\System32\\wsl.exe",
+      "args": ["-d", "Ubuntu"]
+    }
+  },
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "window.confirmSaveUntitledWorkspace": false,
+  "workbench.colorTheme": "Tokyo Night Storm",
+  "workbench.editor.closeEmptyGroups": false,
+  "workbench.editor.empty.hint": "hidden",
+  "workbench.editor.enablePreview": true,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.editor.highlightModifiedTabs": true,
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.startupEditor": "newUntitledFile"
+}
