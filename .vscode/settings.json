@@ -1,3 +1,4 @@
 {
-  "conventionalCommits.scopes": ["shell", "settings", "config"]
+  "conventionalCommits.scopes": ["shell", "settings", "config"],
+  "snyk.advanced.autoSelectOrganization": true
 }

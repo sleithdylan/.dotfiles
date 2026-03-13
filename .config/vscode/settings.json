@@ -8,6 +8,7 @@
     },
     "editor.formatOnType": true
   },
+  "black-formatter.args": ["--line-length", "100"],
   "auto-close-tag.activationOnLanguage": ["*"],
   "breadcrumbs.enabled": true,
   "cSpell.diagnosticLevel": "Hint",
@@ -151,8 +152,6 @@
   "git.openRepositoryInParentFolders": "never",
   "javascript.updateImportsOnFileMove.enabled": "always",
   "js/ts.implicitProjectConfig.experimentalDecorators": true,
-  "liveServer.settings.ChromeDebuggingAttachment": false,
-  "liveServer.settings.donotShowInfoMsg": true,
   "markdownlint.config": {
     "first-line-heading": false
   },
