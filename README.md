@@ -1,4 +1,4 @@
-# Dotfiles
+# .dotfiles
 
 Personal development environment for Windows and Unix-based systems (WSL/Linux/MacOS).
 
@@ -6,52 +6,58 @@ Personal development environment for Windows and Unix-based systems (WSL/Linux/M
 
 ### Installing WSL2
 
-1. Open PowerShell
+```powershell
+wsl.exe --install
+```
 
-2. Install WSL2:
+> To list available distros: `wsl.exe --list --online`
 
-   ```sh
-   wsl.exe --install
-   ```
+### Unregister a distro
 
-   > **List the available Linux distros:** wsl.exe --list --online
+List installed distros:
 
-### Unregister Linux distro
+```powershell
+wsl.exe --list --verbose
+```
 
-1. Open PowerShell
+Unregister (destroy) a distro:
 
-2. List all distros:
-
-   ```sh
-   wsl.exe --list --verbose
-   ```
-
-3. Unregister (destroy) distro:
-
-   ```sh
-   wsl --unregister <Distro, e.g: Ubuntu>
-   ```
+```powershell
+wsl --unregister <DistroName>
+```
 
 ## Scripts
 
-### Installation for Windows
+### Windows (PowerShell)
 
-Automates the installation of essential dev tools and GUI applications using PowerShell.
+Run as **Administrator**:
 
-**Usage:**
-
-```sh
+```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1
 ```
 
-> Make sure you are running PowerShell as Administrator before running the script!
+**Optional flags:**
 
-### Installation for WSL/Linux/MacOS
+| Flag              | Description                                |
+| ----------------- | ------------------------------------------ |
+| `-SkipChocolatey` | Skip Chocolatey and all package installs   |
+| `-SkipFonts`      | Skip MesloLGS NF font installation         |
+| `-SkipModules`    | Skip PowerShell Gallery modules            |
+| `-SkipOhMyPosh`   | Skip Oh My Posh installation               |
+| `-SkipProfile`    | Skip PowerShell profile setup              |
+| `-UpdatePackages` | Upgrade outdated Chocolatey packages       |
+| `-RemoveOrphaned` | Remove packages not in `chocolatey.config` |
 
-Automates the installation of essential dev tools and GUI applications using apt or Homebrew, depending on your OS.
-
-**Usage:**
+### WSL / Linux / macOS
 
 ```sh
-sudo chmod +x scripts/init.sh && ./scripts/init.sh
+chmod +x scripts/init.sh && ./scripts/init.sh
 ```
+
+**Optional flags:**
+
+| Flag                | Description                        |
+| ------------------- | ---------------------------------- |
+| `--update-packages` | Upgrade already-installed packages |
+
+> Automatically detects your OS (WSL, Linux, macOS) and uses `apt` or `Homebrew` accordingly.

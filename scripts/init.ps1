@@ -1,4 +1,4 @@
-# ------------------------------------------------------------------------------
+﻿# ------------------------------------------------------------------------------
 # Windows Initialization Script (PowerShell)
 # ------------------------------------------------------------------------------
 # Usage: Run as Administrator
@@ -13,7 +13,10 @@ param(
     [switch]$SkipModules,
     [switch]$SkipOhMyPosh,
     [switch]$SkipProfile,
-    [switch]$SkipFonts
+    [switch]$SkipFonts,
+    [switch]$SkipTerminalConfig,
+    [switch]$UpdatePackages,
+    [switch]$RemoveOrphaned
 )
 
 # Strict mode for better error handling
@@ -43,6 +46,8 @@ $OhMyPoshTheme = "powerlevel10k_rainbow"
 $script:Installed = [System.Collections.ArrayList]::new()
 $script:Skipped = [System.Collections.ArrayList]::new()
 $script:Failed = [System.Collections.ArrayList]::new()
+$script:Removed = [System.Collections.ArrayList]::new()
+$script:Updated = [System.Collections.ArrayList]::new()
 
 # ------------------------------------------------------------------------------
 # Logging Functions
@@ -149,6 +154,124 @@ function Install-Chocolatey {
     }
 }
 
+function Get-InstalledChocolateyPackages {
+    try {
+        $output = choco list --limit-output 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+
+        $packages = @()
+        foreach ($line in $output) {
+            if ($line -match '^([^\s|]+)\|') {
+                $packageId = $matches[1]
+                # Exclude Chocolatey itself
+                if ($packageId -ne 'chocolatey') {
+                    $packages += $packageId
+                }
+            }
+        }
+        
+        return $packages
+    }
+    catch {
+        Write-LogWarning "Failed to get installed packages list: $_"
+        return @()
+    }
+}
+
+function Get-InstalledPackageVersion {
+    param(
+        [string]$PackageId
+    )
+    
+    try {
+        $output = choco list --exact $PackageId --limit-output 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        foreach ($line in $output) {
+            if ($line -match "^$([regex]::Escape($PackageId))\|([^\s|]+)") {
+                return $matches[1]
+            }
+        }
+        
+        return $null
+    }
+    catch {
+        return $null
+    }
+}
+
+function Remove-OrphanedPackages {
+    param(
+        [string]$ConfigPath
+    )
+    
+    if (-not $RemoveOrphaned) {
+        return
+    }
+    
+    Write-LogInfo "Checking for orphaned packages (not in config)..."
+    
+    if (-not (Test-Path $ConfigPath)) {
+        Write-LogError "Chocolatey config not found: $ConfigPath"
+        return
+    }
+    
+    try {
+        # Get packages from config
+        [xml]$config = Get-Content $ConfigPath
+        $configPackages = @{}
+        foreach ($pkg in $config.packages.package) {
+            $configPackages[$pkg.id] = $true
+        }
+        
+        # Get installed packages
+        $installedPackages = Get-InstalledChocolateyPackages
+        
+        # Find orphaned packages (installed but not in config)
+        $orphaned = @()
+        foreach ($installed in $installedPackages) {
+            if (-not $configPackages.ContainsKey($installed)) {
+                $orphaned += $installed
+            }
+        }
+        
+        if ($orphaned.Count -eq 0) {
+            Write-LogInfo "No orphaned packages found"
+            return
+        }
+        
+        Write-LogInfo "Found $($orphaned.Count) orphaned package(s) to remove"
+        
+        foreach ($packageId in $orphaned) {
+            Write-LogInfo "Removing orphaned package: $packageId"
+            
+            try {
+                $result = choco uninstall $packageId -y --no-progress 2>&1
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-LogSuccess "$packageId removed"
+                    [void]$script:Removed.Add($packageId)
+                }
+                else {
+                    Write-LogWarning "$packageId could not be removed (may have dependencies)"
+                }
+            }
+            catch {
+                Write-LogWarning "Failed to remove $packageId : $_"
+            }
+        }
+        
+        Write-LogSuccess "Orphaned package cleanup complete"
+    }
+    catch {
+        Write-LogError "Failed to remove orphaned packages: $_"
+    }
+}
+
 function Install-ChocolateyPackages {
     param(
         [string]$ConfigPath
@@ -180,10 +303,33 @@ function Install-ChocolateyPackages {
             Write-Host "[$current/$totalPackages] " -NoNewline -ForegroundColor Gray
             
             # Check if already installed
-            $installed = choco list --local-only --exact $packageId 2>$null
-            if ($installed -match $packageId) {
-                Write-LogWarning "$packageId already installed, skipping"
-                [void]$script:Skipped.Add($packageId)
+            $installedVersion = Get-InstalledPackageVersion -PackageId $packageId
+            if ($null -ne $installedVersion) {
+                # Package is installed - check if update is needed
+                if ($UpdatePackages -and $installedVersion -ne $packageVersion) {
+                    Write-LogInfo "Updating $packageId from $installedVersion to $packageVersion..."
+                    
+                    # Upgrade to config version
+                    $result = choco upgrade $packageId --version $packageVersion -y --no-progress 2>&1
+                    
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-LogSuccess "$packageId updated to $packageVersion"
+                        [void]$script:Updated.Add("$packageId ($installedVersion -> $packageVersion)")
+                    }
+                    else {
+                        Write-LogError "$packageId update failed"
+                        [void]$script:Failed.Add("$packageId (update)")
+                    }
+                }
+                else {
+                    if ($UpdatePackages) {
+                        Write-LogInfo "$packageId already at version $packageVersion, skipping"
+                    }
+                    else {
+                        Write-LogWarning "$packageId already installed, skipping"
+                    }
+                    [void]$script:Skipped.Add($packageId)
+                }
                 continue
             }
             
@@ -288,8 +434,15 @@ function Install-AllPSModules {
         Write-LogWarning "Could not set PSGallery as trusted"
     }
     
+    $allModulesInstalled = @($PSGalleryModules | Where-Object { -not (Test-ModuleInstalled -ModuleName $_.Name) }).Count -eq 0
+    if ($allModulesInstalled) {
+        Write-LogWarning "All PowerShell modules already installed, skipping"
+        foreach ($m in $PSGalleryModules) { [void]$script:Skipped.Add($m.Name) }
+        return
+    }
+
     foreach ($module in $PSGalleryModules) {
-        Install-PSModule -ModuleName $module.Name -Description $module.Description
+        [void](Install-PSModule -ModuleName $module.Name -Description $module.Description)
     }
 }
 
@@ -353,7 +506,14 @@ function Install-Font {
 
 function Install-MesloLGSNF {
     Write-LogInfo "Installing MesloLGS NF fonts (Powerlevel10k recommendation)..."
-    
+
+    $allFontsInstalled = @($NerdFonts.Keys | Where-Object { -not (Test-FontInstalled -FontName $_) }).Count -eq 0
+    if ($allFontsInstalled) {
+        Write-LogWarning "All MesloLGS NF fonts already installed, skipping"
+        [void]$script:Skipped.Add("MesloLGS-NF")
+        return $true
+    }
+
     $tempDir = Join-Path $env:TEMP "MesloLGS-NF"
     
     # Create temp directory
@@ -413,7 +573,7 @@ function Install-MesloLGSNF {
 
 function Install-NerdFonts {
     # Install MesloLGS NF (Powerlevel10k recommended)
-    Install-MesloLGSNF
+    [void](Install-MesloLGSNF)
     
     Write-LogInfo "Font installation complete"
     Write-LogInfo "Configure Windows Terminal: Settings > Profiles > Appearance > Font face"
@@ -436,14 +596,14 @@ function Test-OhMyPosh {
 
 function Install-OhMyPosh {
     if (-not (Test-OhMyPosh)) {
-        Write-LogInfo "Installing Oh My Posh via winget..."
-        
+        Write-LogInfo "Installing Oh My Posh via Chocolatey..."
+
         try {
-            winget install JanDeDobbeleer.OhMyPosh -s winget --accept-package-agreements --accept-source-agreements
-            
+            choco install oh-my-posh -y --no-progress
+
             # Refresh PATH
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-            
+
             if (Test-OhMyPosh) {
                 Write-LogSuccess "Oh My Posh installed"
                 [void]$script:Installed.Add("oh-my-posh")
@@ -464,16 +624,80 @@ function Install-OhMyPosh {
         [void]$script:Skipped.Add("oh-my-posh")
     }
     
-    # Verify theme exists
-    $themePath = "$env:POSH_THEMES_PATH\$OhMyPoshTheme.omp.json"
-    if ($env:POSH_THEMES_PATH -and (Test-Path $themePath)) {
-        Write-LogSuccess "Theme '$OhMyPoshTheme' is available"
-    }
-    else {
-        Write-LogInfo "Theme path: Use 'Get-PoshThemes' to see available themes"
-    }
+    # Ensure themes are present (recent oh-my-posh releases ship the binary only)
+    Install-OhMyPoshThemes
     
     return $true
+}
+
+function Get-OhMyPoshThemesDir {
+    # Prefer the path oh-my-posh itself reports
+    if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
+        try {
+            $initOutput = & oh-my-posh init pwsh 2>$null
+            $match = $initOutput | Select-String -Pattern 'POSH_THEMES_PATH\s*=\s*"([^"]+)"' | Select-Object -First 1
+            if ($match) {
+                $reported = $match.Matches[0].Groups[1].Value
+                if ($reported) { return $reported }
+            }
+        }
+        catch { }
+    }
+
+    if ($env:POSH_THEMES_PATH) { return $env:POSH_THEMES_PATH }
+
+    return (Join-Path $env:LOCALAPPDATA "Programs\oh-my-posh\themes")
+}
+
+function Install-OhMyPoshThemes {
+    $themesDir = Get-OhMyPoshThemesDir
+    $themeFile = Join-Path $themesDir "$OhMyPoshTheme.omp.json"
+
+    if (Test-Path $themeFile) {
+        Write-LogSuccess "Theme '$OhMyPoshTheme' is available at: $themesDir"
+        $env:POSH_THEMES_PATH = $themesDir
+        [void]$script:Skipped.Add("oh-my-posh-themes (already present)")
+        return $true
+    }
+
+    Write-LogInfo "Downloading Oh My Posh themes to: $themesDir"
+
+    try {
+        if (-not (Test-Path $themesDir)) {
+            New-Item -ItemType Directory -Path $themesDir -Force | Out-Null
+        }
+
+        $zipUrl  = "https://github.com/JanDeDobbeleer/oh-my-posh/releases/latest/download/themes.zip"
+        $zipPath = Join-Path $env:TEMP "oh-my-posh-themes-$(Get-Random).zip"
+
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+
+        $zipSizeKb = [Math]::Round((Get-Item $zipPath).Length / 1KB)
+        Write-LogInfo "Downloaded themes.zip ($zipSizeKb KB), extracting..."
+
+        Expand-Archive -Path $zipPath -DestinationPath $themesDir -Force -ErrorAction Stop
+        Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+
+        $themeCount = (Get-ChildItem $themesDir -Filter "*.omp.json" -ErrorAction SilentlyContinue).Count
+
+        if (Test-Path $themeFile) {
+            Write-LogSuccess "Installed $themeCount Oh My Posh themes (including '$OhMyPoshTheme')"
+            $env:POSH_THEMES_PATH = $themesDir
+            [void]$script:Installed.Add("oh-my-posh-themes ($themeCount themes)")
+            return $true
+        }
+
+        Write-LogWarning "Themes extracted ($themeCount files) but configured theme '$OhMyPoshTheme' is not among them"
+        $env:POSH_THEMES_PATH = $themesDir
+        [void]$script:Installed.Add("oh-my-posh-themes ($themeCount themes, '$OhMyPoshTheme' missing)")
+        return $true
+    }
+    catch {
+        Write-LogError "Failed to install Oh My Posh themes: $_"
+        [void]$script:Failed.Add("oh-my-posh-themes")
+        return $false
+    }
 }
 
 # ------------------------------------------------------------------------------
@@ -498,117 +722,26 @@ function Update-PowerShellProfile {
         Write-LogInfo "Backed up existing profile to: $backupPath"
     }
     
-    # Generate profile content
-    $profileContent = @'
-# ==============================================================================
-# PowerShell Profile - Generated by init.ps1
-# ==============================================================================
-
-# ------------------------------------------------------------------------------
-# Oh My Posh
-# ------------------------------------------------------------------------------
-$env:POSH_DISABLE_COMPLETION = "1"
-if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
-    $themePath = "$env:POSH_THEMES_PATH\powerlevel10k_rainbow.omp.json"
-    if (Test-Path $themePath) {
-        oh-my-posh init pwsh --config $themePath | Invoke-Expression
+    # Load and hydrate profile template
+    $templatePath = Join-Path $PSScriptRoot "templates\profile.ps1"
+    if (-not (Test-Path $templatePath)) {
+        Write-LogError "Profile template not found: $templatePath"
+        [void]$script:Failed.Add("ps-profile")
+        return $false
     }
-    else {
-        # Fallback to default theme
-        oh-my-posh init pwsh | Invoke-Expression
-    }
-}
-
-# ------------------------------------------------------------------------------
-# Modules
-# ------------------------------------------------------------------------------
-
-# posh-git - Git status in prompt
-if (Get-Module -ListAvailable -Name posh-git) {
-    Import-Module posh-git
-}
-
-# Terminal-Icons - File/folder icons
-if (Get-Module -ListAvailable -Name Terminal-Icons) {
-    Import-Module Terminal-Icons
-}
-
-# z - Directory jumping
-if (Get-Module -ListAvailable -Name z) {
-    Import-Module z
-}
-
-# PSFzf - Fuzzy finder (requires fzf to be installed)
-if ((Get-Command fzf -ErrorAction SilentlyContinue) -and (Get-Module -ListAvailable -Name PSFzf)) {
-    Import-Module PSFzf
-    Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+f' -PSReadlineChordReverseHistory 'Ctrl+r'
-}
-
-# ------------------------------------------------------------------------------
-# PSReadLine Configuration
-# ------------------------------------------------------------------------------
-if (Get-Module -ListAvailable -Name PSReadLine) {
-    # Prediction settings (PSReadLine 2.1.0+)
-    try {
-        Set-PSReadLineOption -PredictionSource History
-        Set-PSReadLineOption -PredictionViewStyle ListView
-    }
-    catch { }
-    
-    # Key bindings
-    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-    
-    # Colors (optional - uses theme colors)
-    Set-PSReadLineOption -Colors @{
-        Command = 'Cyan'
-        Parameter = 'DarkCyan'
-        String = 'DarkYellow'
-    }
-}
-
-# ------------------------------------------------------------------------------
-# Aliases
-# ------------------------------------------------------------------------------
-Set-Alias -Name vim -Value nvim -ErrorAction SilentlyContinue
-Set-Alias -Name g -Value git -ErrorAction SilentlyContinue
-Set-Alias -Name open -Value explorer -ErrorAction SilentlyContinue
-
-# ------------------------------------------------------------------------------
-# Functions
-# ------------------------------------------------------------------------------
-
-# Quick navigation
-function .. { Set-Location .. }
-function ... { Set-Location ..\.. }
-function .... { Set-Location ..\..\.. }
-
-# Create and enter directory
-function mkcd { param($dir) New-Item -ItemType Directory -Path $dir -Force; Set-Location $dir }
-
-# Get public IP
-function Get-PublicIP { (Invoke-WebRequest -Uri "https://api.ipify.org").Content }
-
-# Quick edit profile
-function Edit-Profile { code $PROFILE }
-
-# Reload profile
-function Reload-Profile { . $PROFILE }
-
-# ==============================================================================
-# End of Profile
-# ==============================================================================
-'@
+    $profileContent = (Get-Content $templatePath -Raw).Replace("{{OhMyPoshTheme}}", $OhMyPoshTheme)
 
     try {
         # Check if profile already contains our marker
         if (Test-Path $PROFILE) {
             $existingContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
             if ($existingContent -match "Generated by init.ps1") {
-                Write-LogWarning "Profile already configured by init.ps1, skipping"
-                [void]$script:Skipped.Add("ps-profile")
-                return $true
+                if ($existingContent -match [regex]::Escape($OhMyPoshTheme)) {
+                    Write-LogWarning "Profile already configured with theme '$OhMyPoshTheme', skipping"
+                    [void]$script:Skipped.Add("ps-profile")
+                    return $true
+                }
+                Write-LogInfo "Theme changed, regenerating profile..."
             }
         }
         
@@ -630,6 +763,102 @@ function Reload-Profile { . $PROFILE }
 }
 
 # ------------------------------------------------------------------------------
+# Windows Terminal Configuration
+# ------------------------------------------------------------------------------
+
+function Set-WindowsTerminalNoLogo {
+    Write-LogInfo "Configuring Windows Terminal to suppress PowerShell copyright..."
+
+    $settingsPaths = @(
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
+        "$env:LOCALAPPDATA\Microsoft\Windows Terminal\settings.json"
+    )
+
+    $settingsPath = $settingsPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $settingsPath) {
+        Write-LogWarning "Windows Terminal settings.json not found, skipping"
+        [void]$script:Skipped.Add("terminal-nologo")
+        return
+    }
+
+    try {
+        $raw = Get-Content $settingsPath -Raw -Encoding UTF8
+
+        # Backup before modifying
+        $backupPath = "$settingsPath.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        Set-Content -Path $backupPath -Value $raw -Encoding UTF8
+
+        # Strip single-line JSONC comments so ConvertFrom-Json can parse it
+        $stripped = $raw -replace '(?m)(?<!:)//[^\r\n]*', ''
+        $settings = $stripped | ConvertFrom-Json
+
+        $updatedProfiles = [System.Collections.Generic.List[string]]::new()
+        $alreadyConfigured = [System.Collections.Generic.List[string]]::new()
+        $powershellProfileCount = 0
+
+        foreach ($wtProfile in $settings.profiles.list) {
+            $profileName = if ($wtProfile.PSObject.Properties['name']) { $wtProfile.name } else { '<unnamed>' }
+
+            $isPowerShell = (
+                ($wtProfile.PSObject.Properties['commandline'] -and $wtProfile.commandline -match 'pwsh|powershell') -or
+                ($wtProfile.PSObject.Properties['source']      -and $wtProfile.source      -match 'PowerShell') -or
+                ($wtProfile.PSObject.Properties['name']        -and $wtProfile.name        -match 'PowerShell')
+            )
+
+            if (-not $isPowerShell) { continue }
+
+            $powershellProfileCount++
+
+            if ($wtProfile.PSObject.Properties['commandline']) {
+                if ($wtProfile.commandline -match '-NoLogo') {
+                    Write-LogInfo "  '$profileName' already has -NoLogo"
+                    $alreadyConfigured.Add($profileName)
+                    continue
+                }
+                $wtProfile.commandline = "$($wtProfile.commandline.TrimEnd()) -NoLogo"
+            }
+            else {
+                $exe = if ($wtProfile.PSObject.Properties['source'] -and $wtProfile.source -match 'PowershellCore') {
+                    "pwsh.exe"
+                } elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {
+                    "pwsh.exe"
+                } else {
+                    "powershell.exe"
+                }
+                $wtProfile | Add-Member -NotePropertyName commandline -NotePropertyValue "$exe -NoLogo" -Force
+            }
+
+            $updatedProfiles.Add($profileName)
+        }
+
+        if ($powershellProfileCount -eq 0) {
+            Write-LogWarning "No PowerShell profiles found in Windows Terminal settings"
+            [void]$script:Skipped.Add("terminal-nologo (no PowerShell profiles)")
+            Remove-Item $backupPath -Force -ErrorAction SilentlyContinue
+            return
+        }
+
+        if ($updatedProfiles.Count -eq 0) {
+            Write-LogInfo "All PowerShell profiles already have -NoLogo ($powershellProfileCount profile(s))"
+            [void]$script:Skipped.Add("terminal-nologo (already configured: $($alreadyConfigured -join ', '))")
+            Remove-Item $backupPath -Force -ErrorAction SilentlyContinue
+            return
+        }
+
+        $settings | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding UTF8
+        Write-LogSuccess "Windows Terminal -NoLogo applied to: $($updatedProfiles -join ', ')"
+        Write-LogInfo "Backup saved to: $backupPath"
+        [void]$script:Installed.Add("terminal-nologo ($($updatedProfiles.Count) profile(s))")
+    }
+    catch {
+        Write-LogError "Failed to configure Windows Terminal: $_"
+        [void]$script:Failed.Add("terminal-nologo")
+    }
+}
+
+# ------------------------------------------------------------------------------
 # Installation Summary
 # ------------------------------------------------------------------------------
 
@@ -647,6 +876,14 @@ function Show-Summary {
     }
     Write-Host ""
     
+    # Updated
+    if ($script:Updated.Count -gt 0) {
+        Write-Host "Updated ($($script:Updated.Count)):" -ForegroundColor Cyan
+        $updatedList = $script:Updated -join ", "
+        Write-Host "  $updatedList" -ForegroundColor Gray
+        Write-Host ""
+    }
+    
     # Skipped
     Write-Host "Skipped ($($script:Skipped.Count)):" -ForegroundColor Yellow
     if ($script:Skipped.Count -gt 0) {
@@ -657,6 +894,14 @@ function Show-Summary {
         Write-Host "  (none)" -ForegroundColor Gray
     }
     Write-Host ""
+    
+    # Removed
+    if ($script:Removed.Count -gt 0) {
+        Write-Host "Removed ($($script:Removed.Count)):" -ForegroundColor Magenta
+        $removedList = $script:Removed -join ", "
+        Write-Host "  $removedList" -ForegroundColor Gray
+        Write-Host ""
+    }
     
     # Failed
     Write-Host "Failed ($($script:Failed.Count)):" -ForegroundColor Red
@@ -721,8 +966,11 @@ function Main {
             }
         }
         
+        # Remove orphaned packages (not in config) if requested
+        Remove-OrphanedPackages -ConfigPath $chocoConfigPath
+        
         # Install Chocolatey packages from config
-        Install-ChocolateyPackages -ConfigPath $chocoConfigPath
+        [void](Install-ChocolateyPackages -ConfigPath $chocoConfigPath)
         
         # Refresh environment variables after Chocolatey installs
         Write-LogInfo "Refreshing environment variables..."
@@ -764,7 +1012,7 @@ function Main {
     # Install Oh My Posh
     if (-not $SkipOhMyPosh) {
         Write-LogInfo "Installing Oh My Posh..."
-        Install-OhMyPosh
+        [void](Install-OhMyPosh)
     }
     else {
         Write-LogWarning "Skipping Oh My Posh (--SkipOhMyPosh)"
@@ -772,19 +1020,27 @@ function Main {
     
     # Configure PowerShell profile
     if (-not $SkipProfile) {
-        Update-PowerShellProfile
+        [void](Update-PowerShellProfile)
     }
     else {
         Write-LogWarning "Skipping profile configuration (--SkipProfile)"
     }
     
+    # Configure Windows Terminal -NoLogo
+    if (-not $SkipTerminalConfig) {
+        Set-WindowsTerminalNoLogo
+    }
+    else {
+        Write-LogWarning "Skipping Windows Terminal configuration (--SkipTerminalConfig)"
+    }
+
     # Show installation summary
     Show-Summary
     
     Write-LogSuccess "Setup complete!"
     Write-Host ""
     Write-LogInfo "Next steps:"
-    Write-Host "  1. Restart your terminal to apply all changes" -ForegroundColor Gray
+    Write-Host "  1. Reload your profile: . `$PROFILE" -ForegroundColor Gray
     Write-Host "  2. Configure Windows Terminal font:" -ForegroundColor Gray
     Write-Host "     Settings (Ctrl+,) > Profiles > Defaults > Appearance > Font face" -ForegroundColor DarkGray
     Write-Host "     Set to: 'MesloLGS NF'" -ForegroundColor DarkGray
