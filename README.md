@@ -33,31 +33,50 @@ wsl --unregister <DistroName>
 Run as **Administrator**:
 
 ```powershell
+# Run the init script
 Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1
 ```
 
 **Optional flags:**
 
-| Flag              | Description                                |
-| ----------------- | ------------------------------------------ |
-| `-SkipChocolatey` | Skip Chocolatey and all package installs   |
-| `-SkipFonts`      | Skip MesloLGS NF font installation         |
-| `-SkipModules`    | Skip PowerShell Gallery modules            |
-| `-SkipOhMyPosh`   | Skip Oh My Posh installation               |
-| `-SkipProfile`    | Skip PowerShell profile setup              |
-| `-UpdatePackages` | Upgrade outdated Chocolatey packages       |
-| `-RemoveOrphaned` | Remove packages not in `chocolatey.config` |
+| Flag                  | Description                                                                  |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `-SkipChocolatey`     | Skip Chocolatey and all package installs                                     |
+| `-SkipFonts`          | Skip Nerd Font installation (used for icons in shell prompts)                |
+| `-SkipModules`        | Skip PowerShell Gallery modules (used for shell enhancements)                |
+| `-SkipOhMyPosh`       | Skip Oh My Posh installation (prompt theme engine)                           |
+| `-SkipProfile`        | Skip PowerShell profile setup                                                |
+| `-SkipTerminalConfig` | Skip Windows Terminal configuration (suppresses PowerShell copyright banner) |
+| `-UpdatePackages`     | Upgrade installed packages to the versions pinned in `chocolatey.config`     |
+| `-RemoveOrphaned`     | Remove installed packages not listed in `chocolatey.config`                  |
+
+```powershell
+# Run the init script with all optional flags
+Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1 -UpdatePackages -RemoveOrphaned -SkipFonts -SkipModules -SkipOhMyPosh -SkipProfile -SkipTerminalConfig
+```
 
 ### WSL / Linux / macOS
 
 ```sh
-chmod +x scripts/init.sh && ./scripts/init.sh
+# Make the script executable
+chmod +x scripts/init.sh
+
+# Run the init script
+./scripts/init.sh
 ```
 
 **Optional flags:**
 
-| Flag                | Description                        |
-| ------------------- | ---------------------------------- |
-| `--update-packages` | Upgrade already-installed packages |
+| Flag                | Description                                                          |
+| ------------------- | -------------------------------------------------------------------- |
+| `--update-packages` | Upgrade already-installed packages to their latest available version |
+
+```sh
+# Make the script executable
+chmod +x scripts/init.sh
+
+# Run the init script with all optional flags
+./scripts/init.sh --update-packages
+```
 
 > Automatically detects your OS (WSL, Linux, macOS) and uses `apt` or `Homebrew` accordingly.
