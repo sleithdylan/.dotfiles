@@ -29,7 +29,17 @@
     }
   ],
   "profiles": {
-    "defaults": {},
+    "defaults": {
+      "colorScheme": "Tokyo Night Storm",
+      "font": {
+        "face": "MesloLGS NF"
+      },
+      "opacity": 60,
+      "padding": "12",
+      "scrollbarState": "hidden",
+      "startingDirectory": "%USERPROFILE%",
+      "useAcrylic": true
+    },
     "list": [
       {
         "colorScheme": "Tokyo Night Storm",
@@ -39,166 +49,17 @@
         },
         "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
         "hidden": false,
-        "name": "Windows PowerShell"
-      },
-      {
-        "commandline": "%SystemRoot%\\System32\\cmd.exe",
-        "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
-        "hidden": false,
-        "name": "Command Prompt"
-      },
-      {
-        "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
-        "hidden": false,
-        "name": "Azure Cloud Shell",
-        "source": "Windows.Terminal.Azure"
-      },
-      {
-        "guid": "{d917533e-3888-525a-87c6-20bd6efa9f15}",
-        "hidden": false,
-        "name": "Developer Command Prompt for VS 2022",
-        "source": "Windows.Terminal.VisualStudio"
-      },
-      {
-        "commandline": "pwsh.exe -NoLogo",
-        "guid": "{7952f784-f51a-5095-8a73-c2ef54140a37}",
-        "hidden": false,
-        "name": "Developer PowerShell for VS 2022",
-        "source": "Windows.Terminal.VisualStudio"
-      },
-      {
-        "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
-        "hidden": false,
-        "name": "Git Bash",
-        "source": "Git"
-      },
-      {
-        "guid": "{ad406d94-e991-51ec-a77e-cc185a112dee}",
-        "hidden": true,
-        "name": "Developer Command Prompt for VS 2019",
-        "source": "Windows.Terminal.VisualStudio"
-      },
-      {
-        "commandline": "pwsh.exe -NoLogo",
-        "guid": "{e0c2e931-0297-5cf3-9a8a-c497ea27be24}",
-        "hidden": true,
-        "name": "Developer PowerShell for VS 2019",
-        "source": "Windows.Terminal.VisualStudio"
-      },
-      {
-        "guid": "{d1283db2-0117-5427-87f4-ee4a3ebf2420}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
+        "name": "Windows PowerShell",
+        "startingDirectory": "%USERPROFILE%",
+        "tabTitle": "PowerShell 5"
       },
       {
         "commandline": "pwsh.exe -NoLogo",
         "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
         "hidden": false,
         "name": "PowerShell",
-        "source": "Windows.Terminal.PowershellCore"
-      },
-      {
-        "guid": "{af76899a-cc3c-5fa7-b9e6-6491ec6374f0}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{6b7f5964-41ea-54d8-9c7d-fb96f99b4829}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{140eaf75-8e1f-5bb5-88c7-2ffbc81bb95a}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{e0b004db-0f28-5963-825d-be6793d6e34a}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{295984a4-110b-5785-a3c6-f06c404d1e62}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{c4f76d74-8285-5569-aed2-eb4aa1cacdb8}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{d3e64231-85b1-550e-9c95-b5ba629826a1}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{49e7bdca-9a67-5944-97f9-8f969299cd13}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{2cbcd08c-29f9-5e75-b90b-750b247af720}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{40fd9fcc-5d97-593f-8ecf-1b5ab233acc4}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{dba81dd0-7dae-5473-8176-385c287d157a}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{1087ffa8-de0c-5fc6-b420-07ab042902a5}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{ccde64d6-3756-5346-8cff-fa082ac00a63}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{c683ca4d-7952-5dd8-8525-7574d2d88ca0}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{f914e3fd-eb71-5627-a09d-1255589432dd}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{7ba2ee00-9947-58d0-a012-cc8d821b515f}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
-      },
-      {
-        "guid": "{40cacc8a-37e2-5dcf-b407-932e581d5d09}",
-        "hidden": false,
-        "name": "Ubuntu",
-        "source": "Microsoft.WSL"
+        "source": "Windows.Terminal.PowershellCore",
+        "tabTitle": "PowerShell 7"
       },
       {
         "font": {
@@ -207,13 +68,29 @@
         "guid": "{f89fb3c9-0de0-51d2-8cb4-e9f6f82a6352}",
         "hidden": false,
         "name": "Ubuntu",
-        "source": "Microsoft.WSL"
+        "source": "Microsoft.WSL",
+        "tabTitle": "Ubuntu (WSL2)"
       },
       {
-        "guid": "{51855cb2-8cce-5362-8f54-464b92b32386}",
+        "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
         "hidden": false,
-        "name": "Ubuntu",
-        "source": "CanonicalGroupLimited.Ubuntu_79rhkp1fndgsc"
+        "name": "Git Bash",
+        "source": "Git",
+        "tabTitle": "Git Bash"
+      },
+      {
+        "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
+        "hidden": true,
+        "name": "Azure Cloud Shell",
+        "source": "Windows.Terminal.Azure",
+        "tabTitle": "Azure Cloud Shell"
+      },
+      {
+        "commandline": "%SystemRoot%\\System32\\cmd.exe",
+        "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+        "hidden": false,
+        "name": "Command Prompt",
+        "tabTitle": "Command Prompt"
       }
     ]
   },
