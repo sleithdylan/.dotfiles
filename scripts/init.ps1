@@ -4,6 +4,9 @@
 # Usage: Run as Administrator
 #   Set-ExecutionPolicy Bypass -Scope Process -Force
 #   .\init.ps1
+#
+#   Switches: -SkipChocolatey -SkipModules -SkipOhMyPosh -SkipProfile -SkipFonts
+#             -SkipTerminalConfig -SkipAgents -UpdatePackages -RemoveOrphaned
 # ------------------------------------------------------------------------------
 
 #Requires -Version 5.1
@@ -15,6 +18,7 @@ param(
     [switch]$SkipProfile,
     [switch]$SkipFonts,
     [switch]$SkipTerminalConfig,
+    [switch]$SkipAgents,
     [switch]$UpdatePackages,
     [switch]$RemoveOrphaned
 )
@@ -718,6 +722,60 @@ function Install-OhMyPoshThemes {
 }
 
 # ------------------------------------------------------------------------------
+# Agents (Pi + omp)
+# ------------------------------------------------------------------------------
+
+function Install-Agents {
+    Write-LogInfo "Installing Agents (Pi, omp)..."
+
+    # Match the remote-install setup used for the Chocolatey installer so the
+    # upstream 'irm | iex' installers behave reliably.
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+
+    $agents = @(
+        @{ Name = "pi";  Command = "pi";  InstallerUrl = "https://pi.dev/install.ps1" }
+        @{ Name = "omp"; Command = "omp"; InstallerUrl = "https://omp.sh/install.ps1" }
+    )
+
+    foreach ($agent in $agents) {
+        $name = $agent.Name
+
+        try {
+            Write-LogInfo "Running $name installer ($($agent.InstallerUrl))..."
+
+            $wasPresent = [bool](Get-Command $agent.Command -ErrorAction SilentlyContinue)
+
+            # Always re-run the official installer; it self-updates if present.
+            pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm $($agent.InstallerUrl) | iex"
+            if ($LASTEXITCODE -ne 0) { throw "$name installer exited with code $LASTEXITCODE" }
+
+            # Refresh PATH so the freshly installed command resolves in this run.
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+            Write-Host ""
+            if (-not (Get-Command $agent.Command -ErrorAction SilentlyContinue)) {
+                Write-LogWarning "$name installed but may require terminal restart"
+                [void]$script:Installed.Add($name)
+            }
+            elseif ($wasPresent) {
+                Write-LogSuccess "$name already present (re-ran installer for self-update)"
+                [void]$script:Updated.Add($name)
+            }
+            else {
+                Write-LogSuccess "$name installed"
+                [void]$script:Installed.Add($name)
+            }
+        }
+        catch {
+            Write-Host ""
+            Write-LogError "Failed to install ${name}: $_"
+            [void]$script:Failed.Add($name)
+        }
+    }
+}
+
+# ------------------------------------------------------------------------------
 # PowerShell Profile Configuration
 # ------------------------------------------------------------------------------
 
@@ -907,6 +965,7 @@ function Show-Summary {
         Write-Host "$updatedList" -ForegroundColor Gray
         Write-Host ""
         Write-HorizontalRule
+        Write-Host ""
     }
     
     # Skipped
@@ -1055,6 +1114,14 @@ function Main {
     }
     else {
         Write-LogWarning "Skipping Oh My Posh (--SkipOhMyPosh)"
+    }
+    
+    # Install Pi and Oh My Pi (omp)
+    if (-not $SkipAgents) {
+        Install-Agents
+    }
+    else {
+        Write-LogWarning "Skipping Pi and Oh My Pi"
     }
     
     # Configure PowerShell profile
