@@ -205,28 +205,26 @@ function Get-InstalledChocolateyPackages {
     }
 }
 
-function Get-InstalledPackageVersion {
-    param(
-        [string]$PackageId
-    )
-    
+function Get-InstalledChocolateyPackageMap {
+    $map = New-Object 'System.Collections.Hashtable' ([System.StringComparer]::OrdinalIgnoreCase)
+
     try {
-        $output = choco list --exact $PackageId --limit-output 2>$null
+        $output = choco list --limit-output 2>$null
         if ($LASTEXITCODE -ne 0) {
-            return $null
+            return $map
         }
 
         foreach ($line in $output) {
-            if ($line -match "^$([regex]::Escape($PackageId))\|([^\s|]+)") {
-                return $matches[1]
+            if ($line -match '^([^\s|]+)\|([^\s|]+)') {
+                $map[$matches[1]] = $matches[2]
             }
         }
-        
-        return $null
     }
     catch {
-        return $null
+        Write-LogWarning "Failed to get installed packages map: $_"
     }
+
+    return $map
 }
 
 function Remove-OrphanedPackages {
@@ -315,45 +313,69 @@ function Install-ChocolateyPackages {
         [xml]$config = Get-Content $ConfigPath
         $packages = $config.packages.package
         $totalPackages = $packages.Count
-        $current = 0
         
         Write-LogInfo "Found $totalPackages packages in config"
         
+        # Single discovery call: ask Chocolatey once for everything installed.
+        $installedMap = Get-InstalledChocolateyPackageMap
+        
+        $toProcess = @()
+        $installedCount = 0
+        $updateCount = 0
         foreach ($pkg in $packages) {
+            $installedVersion = $installedMap[$pkg.id]
+            if ($null -ne $installedVersion) {
+                $installedCount++
+                if ($UpdatePackages -and $installedVersion -ne $pkg.version) {
+                    $updateCount++
+                    $toProcess += $pkg
+                }
+                else {
+                    [void]$script:Skipped.Add($pkg.id)
+                }
+            }
+            else {
+                $toProcess += $pkg
+            }
+        }
+        
+        $missingCount = $totalPackages - $installedCount
+        if ($missingCount -eq 0 -and $updateCount -eq 0) {
+            Write-LogSuccess "All $totalPackages packages already installed"
+        }
+        else {
+            $summary = "$installedCount/$totalPackages already installed, installing $missingCount missing"
+            if ($UpdatePackages) {
+                $summary += ", $updateCount to update"
+            }
+            Write-LogInfo $summary
+        }
+        
+        $totalWork = $toProcess.Count
+        $current = 0
+        
+        foreach ($pkg in $toProcess) {
             $current++
             $packageId = $pkg.id
             $packageVersion = $pkg.version
+            $installedVersion = $installedMap[$packageId]
             
-            # Progress indicator
-            Write-Host "[$current/$totalPackages] " -NoNewline -ForegroundColor Gray
+            Write-Host "[$current/$totalWork] " -NoNewline -ForegroundColor Gray
             
-            # Check if already installed
-            $installedVersion = Get-InstalledPackageVersion -PackageId $packageId
             if ($null -ne $installedVersion) {
-                # Package is installed - check if update is needed
-                if ($UpdatePackages -and $installedVersion -ne $packageVersion) {
-                    Write-LogInfo "Updating $packageId from $installedVersion to $packageVersion..."
-                    
-                    # Upgrade to config version
-                    $result = choco upgrade $packageId --version $packageVersion -y --no-progress 2>&1
-                    
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-LogSuccess "$packageId updated to $packageVersion"
-                        [void]$script:Updated.Add("$packageId ($installedVersion -> $packageVersion)")
-                    }
-                    else {
-                        Write-LogError "$packageId update failed"
-                        [void]$script:Failed.Add("$packageId (update)")
-                    }
+                # Package is installed but version-mismatched under -UpdatePackages
+                Write-LogInfo "Updating $packageId from $installedVersion to $packageVersion..."
+                
+                # Upgrade to config version
+                $result = choco upgrade $packageId --version $packageVersion -y --no-progress 2>&1
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-LogSuccess "$packageId updated to $packageVersion"
+                    [void]$script:Updated.Add("$packageId ($installedVersion -> $packageVersion)")
                 }
                 else {
-                    if ($UpdatePackages) {
-                        Write-LogInfo "$packageId already at version $packageVersion, skipping"
-                    }
-                    else {
-                        Write-LogWarning "$packageId already installed, skipping"
-                    }
-                    [void]$script:Skipped.Add($packageId)
+                    Write-LogError "$packageId update failed"
+                    [void]$script:Failed.Add("$packageId (update)")
                 }
                 continue
             }
@@ -373,7 +395,6 @@ function Install-ChocolateyPackages {
             }
         }
         
-        Write-LogSuccess "Chocolatey package installation complete"
         return $true
     }
     catch {
