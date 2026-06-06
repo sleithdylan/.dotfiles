@@ -37,7 +37,7 @@ $PSGalleryModules = @(
 )
 
 # Oh My Posh theme
-$OhMyPoshTheme = "powerlevel10k_rainbow"
+$OhMyPoshTheme = "tokyonight_storm"
 
 # ------------------------------------------------------------------------------
 # Installation Tracking
@@ -75,6 +75,27 @@ function Write-LogWarning {
 function Write-LogError {
     param([string]$Message)
     Write-Host "[$(Get-Timestamp)] [ERROR] $Message" -ForegroundColor Red
+}
+
+function Write-HorizontalRule {
+    param([ConsoleColor]$Color = 'Gray')
+
+    $width = try {
+        if ($Host.UI.RawUI.WindowSize.Width -gt 0) {
+            $Host.UI.RawUI.WindowSize.Width
+        }
+        elseif ([Console]::WindowWidth -gt 0) {
+            [Console]::WindowWidth
+        }
+        else {
+            80
+        }
+    }
+    catch {
+        80
+    }
+
+    Write-Host ('─' * $width) -ForegroundColor $Color
 }
 
 # ------------------------------------------------------------------------------
@@ -505,11 +526,11 @@ function Install-Font {
 }
 
 function Install-MesloLGSNF {
-    Write-LogInfo "Installing MesloLGS NF fonts (Powerlevel10k recommendation)..."
+    Write-LogInfo "Installing Nerd Fonts (MesloLGS NF)..."
 
     $allFontsInstalled = @($NerdFonts.Keys | Where-Object { -not (Test-FontInstalled -FontName $_) }).Count -eq 0
     if ($allFontsInstalled) {
-        Write-LogWarning "All MesloLGS NF fonts already installed, skipping"
+        Write-LogWarning "All Nerd Fonts already installed, skipping"
         [void]$script:Skipped.Add("MesloLGS-NF")
         return $true
     }
@@ -572,12 +593,8 @@ function Install-MesloLGSNF {
 }
 
 function Install-NerdFonts {
-    # Install MesloLGS NF (Powerlevel10k recommended)
+    # Install Nerd Fonts (MesloLGS NF)
     [void](Install-MesloLGSNF)
-    
-    Write-LogInfo "Font installation complete"
-    Write-LogInfo "Configure Windows Terminal: Settings > Profiles > Appearance > Font face"
-    Write-LogInfo "Recommended font: 'MesloLGS NF'"
 }
 
 # ------------------------------------------------------------------------------
@@ -813,7 +830,7 @@ function Set-WindowsTerminalNoLogo {
 
             if ($wtProfile.PSObject.Properties['commandline']) {
                 if ($wtProfile.commandline -match '-NoLogo') {
-                    Write-LogInfo "  '$profileName' already has -NoLogo"
+                    Write-LogInfo "$profileName already has -NoLogo"
                     $alreadyConfigured.Add($profileName)
                     continue
                 }
@@ -869,10 +886,16 @@ function Show-Summary {
     Write-Host "Installed ($($script:Installed.Count)):" -ForegroundColor Green
     if ($script:Installed.Count -gt 0) {
         $installedList = $script:Installed -join ", "
-        Write-Host "  $installedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "$installedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     else {
-        Write-Host "  (none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "(none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     Write-Host ""
     
@@ -880,18 +903,26 @@ function Show-Summary {
     if ($script:Updated.Count -gt 0) {
         Write-Host "Updated ($($script:Updated.Count)):" -ForegroundColor Cyan
         $updatedList = $script:Updated -join ", "
-        Write-Host "  $updatedList" -ForegroundColor Gray
         Write-Host ""
+        Write-Host "$updatedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     
     # Skipped
     Write-Host "Skipped ($($script:Skipped.Count)):" -ForegroundColor Yellow
     if ($script:Skipped.Count -gt 0) {
         $skippedList = $script:Skipped -join ", "
-        Write-Host "  $skippedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "$skippedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     else {
-        Write-Host "  (none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "(none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     Write-Host ""
     
@@ -899,23 +930,31 @@ function Show-Summary {
     if ($script:Removed.Count -gt 0) {
         Write-Host "Removed ($($script:Removed.Count)):" -ForegroundColor Magenta
         $removedList = $script:Removed -join ", "
-        Write-Host "  $removedList" -ForegroundColor Gray
         Write-Host ""
+        Write-Host "$removedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     
     # Failed
     Write-Host "Failed ($($script:Failed.Count)):" -ForegroundColor Red
     if ($script:Failed.Count -gt 0) {
         $failedList = $script:Failed -join ", "
-        Write-Host "  $failedList" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "$failedList" -ForegroundColor Gray
         Write-Host ""
         Write-Host "To retry failed packages manually:" -ForegroundColor Yellow
+        Write-Host ""
+        Write-HorizontalRule
         foreach ($pkg in $script:Failed) {
             Write-Host "  choco install $pkg -y" -ForegroundColor Gray
         }
     }
     else {
-        Write-Host "  (none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "(none)" -ForegroundColor Gray
+        Write-Host ""
+        Write-HorizontalRule
     }
     
     Write-Host ""
