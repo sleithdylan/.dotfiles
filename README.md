@@ -72,9 +72,6 @@ chmod +x scripts/init.sh
 | `--update-packages` | Upgrade already-installed packages to their latest available version |
 
 ```sh
-# Make the script executable
-chmod +x scripts/init.sh
-
 # Run the init script with all optional flags
 ./scripts/init.sh --update-packages
 ```
