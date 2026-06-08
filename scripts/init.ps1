@@ -5,7 +5,7 @@
 #   Set-ExecutionPolicy Bypass -Scope Process -Force
 #   .\init.ps1
 #
-#   Switches: -SkipChocolatey -SkipModules -SkipOhMyPosh -SkipProfile -SkipFonts
+#   Switches: -SkipChocolatey -SkipPowerShellModules  -SkipOhMyPosh -SkipProfile -SkipFonts
 #             -SkipTerminalConfig -SkipAgents -UpdatePackages -RemoveOrphaned
 # ------------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@
 
 param(
     [switch]$SkipChocolatey,
-    [switch]$SkipModules,
+    [switch]$SkipPowerShellModules ,
     [switch]$SkipOhMyPosh,
     [switch]$SkipProfile,
     [switch]$SkipFonts,
@@ -42,6 +42,9 @@ $PSGalleryModules = @(
 
 # Oh My Posh theme
 $OhMyPoshTheme = "tokyonight_storm"
+
+# Max number of timestamped backups to keep per file
+$MaxBackupsToKeep = 3
 
 # ------------------------------------------------------------------------------
 # Installation Tracking
@@ -100,6 +103,30 @@ function Write-HorizontalRule {
     }
 
     Write-Host ('─' * $width) -ForegroundColor $Color
+}
+
+# ------------------------------------------------------------------------------
+# Backup Helpers
+# ------------------------------------------------------------------------------
+
+function Remove-OldBackups {
+    param(
+        [string]$Path,        # original file; backups are "$Path.backup.*"
+        [int]$KeepLast = 3
+    )
+
+    $dir = Split-Path -Parent $Path
+    $leaf = Split-Path -Leaf $Path
+
+    $backups = Get-ChildItem -Path $dir -Filter "$leaf.backup.*" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending
+
+    if ($backups.Count -gt $KeepLast) {
+        foreach ($old in ($backups | Select-Object -Skip $KeepLast)) {
+            Remove-Item $old.FullName -Force -ErrorAction SilentlyContinue
+            Write-LogInfo "Pruned old backup: $($old.Name)"
+        }
+    }
 }
 
 # ------------------------------------------------------------------------------
@@ -434,7 +461,7 @@ function Install-PSModule {
         Write-LogInfo "Installing $ModuleName ($Description)..."
         
         try {
-            # Use TLS 1.2 for PowerShell Gallery
+            # Use TLS 1.2 for PowerShell Gallery Modules
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             
             Install-Module -Name $ModuleName -Force -AllowClobber -Scope CurrentUser -ErrorAction Stop
@@ -456,7 +483,7 @@ function Install-PSModule {
 }
 
 function Install-AllPSModules {
-    Write-LogInfo "Installing PowerShell Gallery modules..."
+    Write-LogInfo "Installing PowerShell Gallery Modules..."
     
     # Ensure NuGet provider is available
     try {
@@ -803,13 +830,6 @@ function Update-PowerShellProfile {
         Write-LogInfo "Created profile directory: $profileDir"
     }
     
-    # Backup existing profile
-    if (Test-Path $PROFILE) {
-        $backupPath = "$PROFILE.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-        Copy-Item -Path $PROFILE -Destination $backupPath
-        Write-LogInfo "Backed up existing profile to: $backupPath"
-    }
-    
     # Load and hydrate profile template
     $templatePath = Join-Path $PSScriptRoot "templates\profile.ps1"
     if (-not (Test-Path $templatePath)) {
@@ -830,6 +850,14 @@ function Update-PowerShellProfile {
                 }
                 Write-LogInfo "Theme changed, regenerating profile..."
             }
+        }
+        
+        # We're about to overwrite — back up first (skip the empty placeholder)
+        if ((Test-Path $PROFILE) -and -not [string]::IsNullOrWhiteSpace((Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue))) {
+            $backupPath = "$PROFILE.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+            Copy-Item -Path $PROFILE -Destination $backupPath
+            Write-LogInfo "Backed up existing profile to: $backupPath"
+            Remove-OldBackups -Path $PROFILE -KeepLast $MaxBackupsToKeep
         }
         
         # Write new profile
@@ -934,6 +962,7 @@ function Set-WindowsTerminalNoLogo {
         $settings | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding UTF8
         Write-LogSuccess "Windows Terminal -NoLogo applied to: $($updatedProfiles -join ', ')"
         Write-LogInfo "Backup saved to: $backupPath"
+        Remove-OldBackups -Path $settingsPath -KeepLast $MaxBackupsToKeep
         [void]$script:Installed.Add("terminal-nologo ($($updatedProfiles.Count) profile(s))")
     }
     catch {
@@ -1013,10 +1042,11 @@ function Show-Summary {
         Write-Host ""
         Write-Host "To retry failed packages manually:" -ForegroundColor Yellow
         Write-Host ""
-        Write-HorizontalRule
         foreach ($pkg in $script:Failed) {
             Write-Host "  choco install $pkg -y" -ForegroundColor Gray
         }
+        Write-Host ""
+        Write-HorizontalRule
     }
     else {
         Write-Host ""
@@ -1096,7 +1126,7 @@ function Main {
         }
     }
     else {
-        Write-LogWarning "Skipping Chocolatey packages (--SkipChocolatey)"
+        Write-LogWarning "Skipping Chocolatey packages (--SkipChocolatey flag is set)"
     }
     
     # Install Nerd Font MesloLGS NF
@@ -1104,15 +1134,15 @@ function Main {
         Install-NerdFonts
     }
     else {
-        Write-LogWarning "Skipping font installation (--SkipFonts)"
+        Write-LogWarning "Skipping Nerd Font Installation (--SkipFonts flag is set)"
     }
     
     # Install PowerShell modules
-    if (-not $SkipModules) {
+    if (-not $SkipPowerShellModules) {
         Install-AllPSModules
     }
     else {
-        Write-LogWarning "Skipping PowerShell modules (--SkipModules)"
+        Write-LogWarning "Skipping PowerShell Gallery Modules (--SkipPowerShellModules flag is set)"
     }
     
     # Install Oh My Posh
@@ -1121,7 +1151,7 @@ function Main {
         [void](Install-OhMyPosh)
     }
     else {
-        Write-LogWarning "Skipping Oh My Posh (--SkipOhMyPosh)"
+        Write-LogWarning "Skipping Oh My Posh (--SkipOhMyPosh flag is set)"
     }
     
     # Install Pi and Oh My Pi (omp)
@@ -1129,7 +1159,7 @@ function Main {
         Install-Agents
     }
     else {
-        Write-LogWarning "Skipping Pi and Oh My Pi"
+        Write-LogWarning "Skipping Pi and Oh My Pi (--SkipAgents flag is set)"
     }
     
     # Configure PowerShell profile
@@ -1137,7 +1167,7 @@ function Main {
         [void](Update-PowerShellProfile)
     }
     else {
-        Write-LogWarning "Skipping profile configuration (--SkipProfile)"
+        Write-LogWarning "Skipping PowerShell Profile Configuration (--SkipProfile flag is set)"
     }
     
     # Configure Windows Terminal -NoLogo
@@ -1145,7 +1175,7 @@ function Main {
         Set-WindowsTerminalNoLogo
     }
     else {
-        Write-LogWarning "Skipping Windows Terminal configuration (--SkipTerminalConfig)"
+        Write-LogWarning "Skipping Windows Terminal Configuration (--SkipTerminalConfig flag is set)"
     }
 
     # Show installation summary

@@ -39,20 +39,21 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1
 
 **Optional flags:**
 
-| Flag                  | Description                                                                  |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `-SkipChocolatey`     | Skip Chocolatey and all package installs                                     |
-| `-SkipFonts`          | Skip Nerd Font installation (used for icons in shell prompts)                |
-| `-SkipModules`        | Skip PowerShell Gallery modules (used for shell enhancements)                |
-| `-SkipOhMyPosh`       | Skip Oh My Posh installation (prompt theme engine)                           |
-| `-SkipProfile`        | Skip PowerShell profile setup                                                |
-| `-SkipTerminalConfig` | Skip Windows Terminal configuration (suppresses PowerShell copyright banner) |
-| `-UpdatePackages`     | Upgrade installed packages to the versions pinned in `chocolatey.config`     |
-| `-RemoveOrphaned`     | Remove installed packages not listed in `chocolatey.config`                  |
+| Flag                     | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `-SkipChocolatey`        | Skip Chocolatey and all package installs                                     |
+| `-SkipFonts`             | Skip Nerd Font installation (used for icons in shell prompts)                |
+| `-SkipPowerShellModules` | Skip PowerShell Gallery modules (used for shell enhancements)                |
+| `-SkipOhMyPosh`          | Skip Oh My Posh installation (prompt theme engine)                           |
+| `-SkipAgents`            | Skip agent installers (Pi and omp)                                           |
+| `-SkipProfile`           | Skip PowerShell profile setup                                                |
+| `-SkipTerminalConfig`    | Skip Windows Terminal configuration (suppresses PowerShell copyright banner) |
+| `-UpdatePackages`        | Upgrade installed packages to the versions pinned in `chocolatey.config`     |
+| `-RemoveOrphaned`        | Remove installed packages not listed in `chocolatey.config`                  |
 
 ```powershell
 # Run the init script with all optional flags
-Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1 -UpdatePackages -RemoveOrphaned -SkipFonts -SkipModules -SkipOhMyPosh -SkipProfile -SkipTerminalConfig
+Set-ExecutionPolicy Bypass -Scope Process -Force; .\scripts\init.ps1 -UpdatePackages -RemoveOrphaned -SkipFonts -SkipPowerShellModules -SkipOhMyPosh -SkipAgents -SkipProfile -SkipTerminalConfig
 ```
 
 ### WSL / Linux / macOS
