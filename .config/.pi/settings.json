@@ -1,0 +1,5 @@
+{
+  "lastChangelogVersion": "0.78.1",
+  "packages": ["npm:@ifi/oh-pi-themes"],
+  "theme": "tokyo-night"
+}

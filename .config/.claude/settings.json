@@ -1,0 +1,55 @@
+{
+  "model": "claude-sonnet-5",
+  "effortLevel": "medium",
+  "alwaysThinkingEnabled": true,
+  "switchModelsOnFlag": true,
+  "permissions": {
+    "deny": ["Bash(**/*.env)", "Read(**/*.env)", "Write(**/*.env)"],
+    "defaultMode": "auto"
+  },
+  "bash": {
+    "deniedCommands": [
+      "rm -rf",
+      "git push --force",
+      "sudo",
+      "DROP TABLE",
+      "truncate"
+    ],
+    "allowedCommands": [
+      "npm test",
+      "npm run lint",
+      "pnpm test",
+      "pnpm run lint",
+      "git status",
+      "git diff",
+      "ls",
+      "cat",
+      "echo"
+    ]
+  },
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": false,
+    "feature-dev@claude-plugins-official": false,
+    "context7@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
+    "mattpocock-skills@claude-plugins-official": true
+  },
+  "skillOverrides": {
+    "scaffold-exercises": "user-invocable-only",
+    "migrate-to-shoehorn": "user-invocable-only",
+    "git-guardrails-claude-code": "on",
+    "setup-pre-commit": "on"
+  },
+  "theme": "dark-ansi",
+  "tui": "fullscreen",
+  "verbose": true,
+  "syntaxHighlightingDisabled": false,
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline.sh"
+  },
+  "autoUpdate": true,
+  "autoUpdatesChannel": "latest"
+}

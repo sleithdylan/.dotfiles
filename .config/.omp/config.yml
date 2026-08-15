@@ -1,0 +1,25 @@
+lastChangelogVersion: 15.10.3
+symbolPreset: unicode
+theme:
+  dark: dark-tokyo-night
+  light: light
+setupVersion: 1
+task:
+  showResolvedModelBadge: true
+clearOnShrink: true
+modelRoles:
+  default: anthropic/claude-sonnet-4-6
+display:
+  showTokenUsage: true
+  shimmer: kitt
+  smoothStreaming: true
+tui:
+  textSizing: false
+  hyperlinks: auto
+statusLine:
+  separator: slash
+  preset: default
+colorBlindMode: false
+showHardwareCursor: true
+tools:
+  approvalMode: write
