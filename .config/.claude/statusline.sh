@@ -2,22 +2,34 @@
 # Claude Code statusline - single line, truecolor gradient
 input=$(cat)
 
-repo=$(printf '%s' "$input" | jq -r '.workspace.repo.name // empty')
-cwd=$(printf '%s' "$input" | jq -r '.workspace.current_dir // .cwd')
+# jq isn't installed on this machine, so parse the JSON with node instead
+fields=$(printf '%s' "$input" | node -e '
+let d = "";
+process.stdin.on("data", c => d += c);
+process.stdin.on("end", () => {
+  let j = {};
+  try { j = JSON.parse(d); } catch (e) {}
+  const repo = j.workspace?.repo?.name ?? "";
+  const cwd = j.workspace?.current_dir ?? j.cwd ?? "";
+  const used = j.context_window?.used_percentage ?? 0;
+  const cost = j.cost?.total_cost_usd ?? "";
+  const added = j.cost?.total_lines_added ?? 0;
+  const removed = j.cost?.total_lines_removed ?? 0;
+  const model = j.model?.display_name ?? "";
+  process.stdout.write([repo, cwd, used, cost, added, removed, model].join("\t"));
+});
+' 2>/dev/null)
+
+IFS=$'\t' read -r repo cwd used cost added removed model <<< "$fields"
+
 if [ -z "$repo" ]; then
   repo=$(basename "$cwd")
 fi
 
 branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-used=$(printf '%s' "$input" | jq -r '.context_window.used_percentage // 0')
 used_int=$(printf '%.0f' "$used" 2>/dev/null)
 if [ -z "$used_int" ]; then used_int=0; fi
-
-cost=$(printf '%s' "$input" | jq -r '.cost.total_cost_usd // empty')
-added=$(printf '%s' "$input" | jq -r '.cost.total_lines_added // 0')
-removed=$(printf '%s' "$input" | jq -r '.cost.total_lines_removed // 0')
-model=$(printf '%s' "$input" | jq -r '.model.display_name // empty')
 
 RESET=$'\033[0m'
 DIM=$'\033[38;2;90;90;90m'
